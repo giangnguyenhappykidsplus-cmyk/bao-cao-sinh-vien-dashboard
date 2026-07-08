@@ -1,4 +1,4 @@
-// Type definitions — Hệ thống Báo cáo Tình trạng Sinh viên 2026-2027
+// Type definitions — Hệ thống Báo cáo Tình trạng Sinh viên 2025-2026
 
 export type CohortKey = 'K23' | 'K24' | 'K25';
 
@@ -67,6 +67,36 @@ export interface MonthlyStat {
   quay_lai: number; // phát sinh trong tháng
   thoi_hoc: number; // phát sinh trong tháng
   chuyen_nganh: number; // phát sinh trong tháng
+  tuyen_moi: number; // phát sinh trong tháng — dùng để tính Quy mô trong năm học
+}
+
+// --- Lifetime cumulative dropout data (từ file "Đầu vào các khóa.xlsx", Cột J = tình trạng hiện tại) ---
+export interface DauVaoLifetimeRow {
+  cohort: CohortKey;
+  major: Major;
+  thoi_hoc: number; // số ca "Thôi học" lũy kế trọn đời
+  total: number; // tổng SV ở tất cả tình trạng (mẫu số)
+}
+
+export interface LifetimeByCohortRow {
+  cohort: CohortKey;
+  thoi_hoc: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeByMajorRow {
+  major: Major;
+  thoi_hoc: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeCrossTabRow {
+  major: Major;
+  k23_thoi_hoc: number; k23_total: number;
+  k24_thoi_hoc: number; k24_total: number;
+  k25_thoi_hoc: number; k25_total: number;
 }
 
 export type CauseGroup =

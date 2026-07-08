@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import type { FilterState, KpiDrillKey, TabKey } from './types';
 import { ALL_MONTHS } from './types';
-import { buildBaselineIntake, buildMonthlyStats, buildStudentRecords } from './data';
+import { buildBaselineIntake, buildMonthlyStats, buildStudentRecords, buildDauVaoLifetime } from './data';
 import { computeKpi, aiRetention, computeCohortRetention, computeMajorRetention, queryStudents, type AiInsight, type DrillDownQuery } from './calc';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
@@ -18,6 +18,7 @@ import { X } from 'lucide-react';
 const baseline = buildBaselineIntake();
 const stats = buildMonthlyStats(baseline);
 const students = buildStudentRecords(baseline, stats);
+const dauvaoLifetime = buildDauVaoLifetime();
 
 const DEFAULT_FILTER: FilterState = { months: [...ALL_MONTHS], systems: [], majors: [], cohorts: [] };
 
@@ -114,7 +115,7 @@ function App() {
 
         {tab === 'tong_quan' && (
           drill ? (
-            <AnalysisPanel drillKey={drill} stats={stats} baseline={baseline} students={students} filter={filter} kpi={kpi} />
+            <AnalysisPanel drillKey={drill} stats={stats} baseline={baseline} students={students} dauvao={dauvaoLifetime} filter={filter} kpi={kpi} />
           ) : (
             <Tab1Overview stats={stats} baseline={baseline} students={students} filter={filter} onDrill={handleDrill} />
           )
@@ -126,7 +127,7 @@ function App() {
       </main>
 
       <footer className="border-t border-ink-800/60 px-5 py-6 text-center text-xs text-slate-600 lg:px-8">
-        Hệ thống Báo cáo Tình trạng Sinh viên 2026-2027 · Dữ liệu phân tích T7/2025–T6/2026 · K23·K24·K25
+        Hệ thống Báo cáo Tình trạng Sinh viên 2025-2026 · Dữ liệu phân tích T7/2025–T6/2026 · K23·K24·K25
       </footer>
 
       {modalQuery && <StudentModal records={modalRecords} query={modalQuery} onClose={() => setModalQuery(null)} />}

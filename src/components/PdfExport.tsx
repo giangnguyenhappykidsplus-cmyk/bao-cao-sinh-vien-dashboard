@@ -57,7 +57,7 @@ export async function exportBghReport(
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<title>Báo cáo BGH - Sinh viên Việt Mỹ 2026-2027</title>
+<title>Báo cáo BGH - Sinh viên Việt Mỹ 2025-2026</title>
 <style>
   @page { size: A4 portrait; margin: 18mm 20mm 18mm 20mm; }
   * { box-sizing: border-box; margin: 0; padding: 0; }

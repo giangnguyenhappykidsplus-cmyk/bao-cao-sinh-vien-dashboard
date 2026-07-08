@@ -8,10 +8,14 @@ import {
   type CauseSummaryRow,
   type CohortKey,
   type CohortRetentionRow,
+  type DauVaoLifetimeRow,
   type DropoutByCohortRow,
   type DropoutByMajorRow,
   type FilterState,
   type KpiSnapshot,
+  type LifetimeByCohortRow,
+  type LifetimeByMajorRow,
+  type LifetimeCrossTabRow,
   type Major,
   type MajorRetentionRow,
   type MonthKey,
@@ -277,6 +281,96 @@ export function dropoutByCohortFull(stats: MonthlyStat[], baseline: BaselineInta
   }).sort((a, b) => b.thoi_hoc - a.thoi_hoc);
 }
 
+// ============================================================
+// PHẦN A — TỔNG QUAN LŨY KẾ TRỌN ĐỜI (nguồn: "Đầu vào các khóa.xlsx", Cột J)
+// Gộp hệ Cao đẳng + Trung cấp theo từng Khóa, KHÔNG tách riêng hệ.
+// ============================================================
+
+function filterDauVao(dauvao: DauVaoLifetimeRow[], f: FilterState): DauVaoLifetimeRow[] {
+  return dauvao.filter((r) => {
+    if (f.cohorts.length && !f.cohorts.includes(r.cohort)) return false;
+    if (f.majors.length && !f.majors.includes(r.major)) return false;
+    return true;
+  });
+}
+
+// Bảng 1: Số lượng & tỷ lệ thôi học lũy kế theo Khóa (K23/K24/K25, đã gộp hệ)
+export function lifetimeByCohort(dauvao: DauVaoLifetimeRow[], f: FilterState): LifetimeByCohortRow[] {
+  const filtered = filterDauVao(dauvao, f);
+  const cohorts: CohortKey[] = f.cohorts.length ? f.cohorts : ['K23', 'K24', 'K25'];
+  return cohorts.map((cohort) => {
+    const rows = filtered.filter((r) => r.cohort === cohort);
+    const thoi_hoc = rows.reduce((s, r) => s + r.thoi_hoc, 0);
+    const total = rows.reduce((s, r) => s + r.total, 0);
+    return { cohort, thoi_hoc, total, ti_le: total > 0 ? (thoi_hoc / total) * 100 : 0 };
+  });
+}
+
+// Bảng 1 chi tiết: đối soát chéo Khóa × Ngành
+export function lifetimeCrossTab(dauvao: DauVaoLifetimeRow[], f: FilterState): LifetimeCrossTabRow[] {
+  const filtered = filterDauVao(dauvao, f);
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(dauvao);
+  return majors.map((major) => {
+    const get = (c: CohortKey) => {
+      const r = filtered.find((x) => x.major === major && x.cohort === c);
+      return { thoi_hoc: r?.thoi_hoc ?? 0, total: r?.total ?? 0 };
+    };
+    const k23 = get('K23'), k24 = get('K24'), k25 = get('K25');
+    return {
+      major,
+      k23_thoi_hoc: k23.thoi_hoc, k23_total: k23.total,
+      k24_thoi_hoc: k24.thoi_hoc, k24_total: k24.total,
+      k25_thoi_hoc: k25.thoi_hoc, k25_total: k25.total,
+    };
+  });
+}
+
+// Bảng 2: Số lượng & tỷ lệ thôi học lũy kế theo Ngành (gộp tất cả Khóa), xếp giảm dần theo số lượng
+export function lifetimeByMajor(dauvao: DauVaoLifetimeRow[], f: FilterState): LifetimeByMajorRow[] {
+  const filtered = filterDauVao(dauvao, f);
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(dauvao);
+  return majors.map((major) => {
+    const rows = filtered.filter((r) => r.major === major);
+    const thoi_hoc = rows.reduce((s, r) => s + r.thoi_hoc, 0);
+    const total = rows.reduce((s, r) => s + r.total, 0);
+    return { major, thoi_hoc, total, ti_le: total > 0 ? (thoi_hoc / total) * 100 : 0 };
+  }).sort((a, b) => b.thoi_hoc - a.thoi_hoc);
+}
+
+// ============================================================
+// PHẦN B — PHÂN TÍCH THÔI HỌC THEO NĂM THỐNG KÊ (T7/2025–T6/2026)
+// Quy mô trong năm học = Tổng SV đầu kỳ (mẫu số tháng đầu tiên trong giai đoạn lọc)
+//   + Tổng SV phát sinh trong năm (Tuyển mới + Quay lại)
+// ============================================================
+
+export function dropoutByMajorYearFull(stats: MonthlyStat[], f: FilterState): DropoutByMajorRow[] {
+  const filtered = filterStats(stats, f);
+  const firstMonth = sortMonths(f.months)[0];
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(stats);
+  return majors.map((m) => {
+    const rows = filtered.filter((s) => s.major === m);
+    const thoi_hoc = rows.reduce((s, x) => s + x.thoi_hoc, 0);
+    const dauKy = rows.filter((s) => s.month === firstMonth).reduce((s, x) => s + x.mau_so, 0);
+    const phatSinh = rows.reduce((s, x) => s + x.tuyen_moi + x.quay_lai, 0);
+    const quy_mo = dauKy + phatSinh;
+    return { major: m, thoi_hoc, quy_mo, ti_le: quy_mo > 0 ? (thoi_hoc / quy_mo) * 100 : 0 };
+  }).sort((a, b) => b.thoi_hoc - a.thoi_hoc);
+}
+
+export function dropoutByCohortYearFull(stats: MonthlyStat[], f: FilterState): DropoutByCohortRow[] {
+  const filtered = filterStats(stats, f);
+  const firstMonth = sortMonths(f.months)[0];
+  const cohorts: CohortKey[] = f.cohorts.length ? f.cohorts : ['K23', 'K24', 'K25'];
+  return cohorts.map((c) => {
+    const rows = filtered.filter((s) => s.cohort === c);
+    const thoi_hoc = rows.reduce((s, x) => s + x.thoi_hoc, 0);
+    const dauKy = rows.filter((s) => s.month === firstMonth).reduce((s, x) => s + x.mau_so, 0);
+    const phatSinh = rows.reduce((s, x) => s + x.tuyen_moi + x.quay_lai, 0);
+    const quy_mo = dauKy + phatSinh;
+    return { cohort: c, thoi_hoc, quy_mo, ti_le: quy_mo > 0 ? (thoi_hoc / quy_mo) * 100 : 0 };
+  }).sort((a, b) => b.thoi_hoc - a.thoi_hoc);
+}
+
 // Bao luu trend (monthly) with % — ti le = bao_luu(thang)/mau_so(thang) dung theo cong thuc Quy uoc,
 // khop truc tiep voi cot "% Bao luu" cua sheet "Thong ke tinh trang chi tiet" (khong dung baseline hang so)
 export function baoLuuTrend(stats: MonthlyStat[], _baseline: BaselineIntake[], f: FilterState): Array<{ month: MonthKey; bao_luu: number; ti_le: number }> {
@@ -435,7 +529,16 @@ export function aiRetention(kpi: KpiSnapshot, cohortRows: CohortRetentionRow[], 
 }
 
 // 2. Thôi học
-export function aiDropout(trend: Array<{ month: MonthKey; thoi_hoc: number }>, causes: CauseSummaryRow[], total: number, byMajor?: DropoutByMajorRow[], byCohort?: DropoutByCohortRow[], bySystem?: SystemRetentionRow[]): AiInsight {
+export function aiDropout(
+  trend: Array<{ month: MonthKey; thoi_hoc: number }>,
+  causes: CauseSummaryRow[],
+  total: number,
+  byMajor?: DropoutByMajorRow[],
+  byCohort?: DropoutByCohortRow[],
+  bySystem?: SystemRetentionRow[],
+  lifetimeMajor?: LifetimeByMajorRow[],
+  lifetimeCohort?: LifetimeByCohortRow[],
+): AiInsight {
   const sorted = [...trend].sort((a, b) => b.thoi_hoc - a.thoi_hoc);
   const peak = sorted[0];
   const avg = trend.reduce((s, x) => s + x.thoi_hoc, 0) / (trend.length || 1);
@@ -444,6 +547,8 @@ export function aiDropout(trend: Array<{ month: MonthKey; thoi_hoc: number }>, c
   const topMajor = byMajor?.[0];
   const topCohort = byCohort?.slice().sort((a, b) => b.thoi_hoc - a.thoi_hoc)[0];
   const topSystem = bySystem?.slice().sort((a, b) => (b.dau_vao - b.dang_hoc) - (a.dau_vao - a.dang_hoc))[0];
+  const lifeTopMajor = lifetimeMajor?.[0];
+  const lifeTopCohort = lifetimeCohort?.slice().sort((a, b) => b.ti_le - a.ti_le)[0];
 
   const majorCohortStr = [
     topMajor ? `Ngành "${topMajor.major}" (${fmtNum(topMajor.thoi_hoc)} ca, ${fmtPct(topMajor.ti_le)})` : '',
@@ -451,10 +556,15 @@ export function aiDropout(trend: Array<{ month: MonthKey; thoi_hoc: number }>, c
     topSystem ? `Hệ "${topSystem.system}" (${fmtPct(topSystem.dau_vao > 0 ? ((topSystem.dau_vao - topSystem.dang_hoc) / topSystem.dau_vao) * 100 : 0)} biến mất)` : '',
   ].filter(Boolean).join('; ');
 
+  const lifetimeStr = [
+    lifeTopMajor ? `Ngành "${lifeTopMajor.major}" dẫn đầu số ca thôi học lũy kế trọn đời (${fmtNum(lifeTopMajor.thoi_hoc)}/${fmtNum(lifeTopMajor.total)} SV, ${fmtPct(lifeTopMajor.ti_le)})` : '',
+    lifeTopCohort ? `Khóa ${lifeTopCohort.cohort} có tỷ lệ thôi học trọn đời cao nhất (${fmtPct(lifeTopCohort.ti_le)})` : '',
+  ].filter(Boolean).join('; ');
+
   return {
-    hienTrang: `Giai đoạn lọc ghi nhận ${fmtNum(total)} sinh viên thôi học. Điểm rơi rủi ro rõ nhất tại ${MONTH_LABELS[peak.month]} với ${fmtNum(peak.thoi_hoc)} ca — cao ${fmtPct(Math.max(0, (peakRatio - 1) * 100), 0)} so với trung bình (${fmtNum(avg)} ca/tháng). Top nguy cơ: ${majorCohortStr}.`,
-    nguyenNhan: `Quét trường "Lý do" gom được 3 nguyên nhân cốt lõi: ${top3.map((c, i) => `${i + 1}. ${CAUSE_LABEL[c.nhom]} (${fmtPct(c.ti_le, 0)}, ${c.so_luong} ca)`).join('; ')}. "Áp lực tài chính" và "Sai định hướng ngành" thường bùng phát vào tháng có hạn nộp học phí hoặc sau kỳ thi.`,
-    khuyenNghi: `Triển khai "cửa sổ can thiệp" 2 tuần trước tháng ${MONTH_LABELS[peak.month].split('/')[0]}/${MONTH_LABELS[peak.month].split('/')[1]}: cố vấn học tập chủ động gọi nhóm nguy cơ, mở thêm đợt trả góp học phí, và tổ chức tư vấn lại định hướng cho sinh viên có dấu hiệu mất động lực.`,
+    hienTrang: `Năm học ghi nhận ${fmtNum(total)} sinh viên thôi học. Điểm rơi rủi ro rõ nhất tại ${MONTH_LABELS[peak.month]} với ${fmtNum(peak.thoi_hoc)} ca — cao ${fmtPct(Math.max(0, (peakRatio - 1) * 100), 0)} so với trung bình (${fmtNum(avg)} ca/tháng). Top nguy cơ trong năm: ${majorCohortStr}.${lifetimeStr ? ` Tính lũy kế từ đầu khóa: ${lifetimeStr}.` : ''}`,
+    nguyenNhan: `Quét trường "Lý do" gom được 3 nguyên nhân cốt lõi: ${top3.map((c, i) => `${i + 1}. ${CAUSE_LABEL[c.nhom]} (${fmtPct(c.ti_le, 0)}, ${c.so_luong} ca)`).join('; ')}. "Áp lực tài chính" và "Sai định hướng ngành" thường bùng phát vào tháng có hạn nộp học phí hoặc sau kỳ thi. Chênh lệch giữa tỷ lệ trong năm và tỷ lệ lũy kế trọn đời cho thấy các khóa cũ (K23/K24) đã tích lũy rủi ro qua nhiều năm học, trong khi K25 mới phản ánh biến động của riêng năm nay.`,
+    khuyenNghi: `Triển khai "cửa sổ can thiệp" 2 tuần trước tháng ${MONTH_LABELS[peak.month].split('/')[0]}/${MONTH_LABELS[peak.month].split('/')[1]}: cố vấn học tập chủ động gọi nhóm nguy cơ, mở thêm đợt trả góp học phí, và tổ chức tư vấn lại định hướng cho sinh viên có dấu hiệu mất động lực.${lifeTopMajor ? ` Ưu tiên rà soát toàn diện ngành "${lifeTopMajor.major}" — đây là ngành có rủi ro tích lũy cao nhất trọn đời, cần đánh giá lại chương trình đào tạo/tuyển sinh đầu vào.` : ''}`,
   };
 }
 
