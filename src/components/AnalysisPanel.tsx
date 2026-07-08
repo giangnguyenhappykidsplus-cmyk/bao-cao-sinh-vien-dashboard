@@ -247,6 +247,9 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filt
   const lifeTop5ByRate = new Set(
     [...lifeMajor].sort((a: any, b: any) => b.ti_le - a.ti_le).slice(0, 5).map((r: any) => r.major),
   );
+  const lifeTop5ByTotal = new Set(
+    [...lifeMajor].sort((a: any, b: any) => b.total - a.total).slice(0, 5).map((r: any) => r.major),
+  );
   // A.2 matrix: top 5 ngành theo tỷ lệ, quét riêng theo TỪNG cột Khóa
   const top5PerCohort = (key: 'k23' | 'k24' | 'k25') => {
     const withPct = lifeCross.map((r: any) => ({ major: r.major, pct: r[`${key}_total`] > 0 ? (r[`${key}_thoi_hoc`] / r[`${key}_total`]) * 100 : 0 }));
@@ -324,18 +327,19 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filt
               {lifeMajor.map((r: any) => {
                 const hlCount = lifeTop5ByCount.has(r.major);
                 const hlRate = lifeTop5ByRate.has(r.major);
+                const hlTotal = lifeTop5ByTotal.has(r.major);
                 return (
                   <tr key={r.major} className="border-b border-ink-800/60">
                     <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
                     <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${hlCount ? 'rounded bg-red-500/20 text-red-300' : 'text-slate-100'}`}>{fmtNum(r.thoi_hoc)}{hlCount && ' 🔴'}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmtNum(r.total)}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${hlTotal ? 'rounded bg-red-500/20 text-red-300 font-semibold' : 'text-slate-400'}`}>{fmtNum(r.total)}{hlTotal && ' 🔴'}</td>
                     <td className={`py-1.5 pl-2 text-right tabular-nums font-bold ${hlRate ? 'rounded bg-red-500/20 text-red-300' : 'text-slate-300'}`}>{fmtPct(r.ti_le, 1)}{hlRate && ' 🔴'}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
-          <p className="mt-2 text-[10px] text-slate-500">🔴 Bôi đỏ: cột "Thôi học lũy kế" = Top 5 ngành số lượng cao nhất trường · cột "Tỷ lệ" = Top 5 ngành tỷ lệ cao nhất trường (2 tập hợp tính độc lập, có thể trùng hoặc khác ngành).</p>
+          <p className="mt-2 text-[10px] text-slate-500">🔴 Bôi đỏ: cột "Thôi học lũy kế" = Top 5 ngành số lượng thôi học cao nhất · cột "Tổng tuyển" = Top 5 ngành có quy mô tuyển sinh lớn nhất · cột "Tỷ lệ" = Top 5 ngành tỷ lệ thôi học cao nhất (3 tập hợp tính độc lập, có thể trùng hoặc khác ngành).</p>
         </div>
       </Card>
 
@@ -462,7 +466,7 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filt
         <Card className="lg:col-span-3">
           <CardHeader title="B.4 Gom nhóm nguyên nhân thôi học" subtitle="Quét Detail1–Detail88 · Cột H = Thôi học · phân tích Ghi chú GVCN · xếp giảm dần" icon={<Activity className="h-4 w-4" />} />
           <div className="max-h-[280px] overflow-auto p-4">
-            <CauseDetailTable rows={causeSummaryFromDetail(detailCauses, filter)} />
+            <CauseDetailTable rows={causeSummaryFromDetail(detailCauses, filter)} contentLabel="Nội dung chính" />
             <p className="mt-2 text-[11px] text-slate-500">
               Nguồn: {detailCauses.length} lượt "Thôi học" duy nhất quét từ Detail1–Detail88 (đã loại trùng lặp SV xuất hiện nhiều sheet), phân loại theo Ghi chú/Lý do GVCN.
             </p>
@@ -804,14 +808,14 @@ function QuayLaiAnalysis({ stats, filter }: any) {
   );
 }
 
-function CauseDetailTable({ rows }: { rows: Array<{ nhom: string; ly_do: string; so_luong: number; ti_le: number }> }) {
+function CauseDetailTable({ rows, contentLabel }: { rows: Array<{ nhom: string; ly_do: string; so_luong: number; ti_le: number }>; contentLabel?: string }) {
   const maxN = Math.max(...rows.map((r) => r.so_luong), 1);
   return (
     <table className="w-full text-xs">
       <thead className="sticky top-0 bg-ink-850">
         <tr className="border-b border-ink-700/60 text-left text-[10px] uppercase tracking-wide text-slate-500">
           <th className="py-2 pr-2 font-medium">Nhóm nguyên nhân</th>
-          <th className="px-2 py-2 font-medium">Lý do chi tiết</th>
+          <th className="px-2 py-2 font-medium">{contentLabel ?? 'Lý do chi tiết'}</th>
           <th className="px-2 py-2 text-right font-medium">Số lượng</th>
           <th className="py-2 pl-2 text-right font-medium">Tỷ lệ %</th>
         </tr>

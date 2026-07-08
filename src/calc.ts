@@ -291,7 +291,8 @@ export function dropoutByCohortFull(stats: MonthlyStat[], baseline: BaselineInta
 const LIFETIME_COHORT_TOTAL_OVERRIDE: Partial<Record<CohortKey, number>> = { K23: 1498 };
 const LIFETIME_COHORT_THOIHOC_OVERRIDE: Partial<Record<CohortKey, number>> = { K25: 94 };
 const LIFETIME_MAJOR_TOTAL_OVERRIDE: Partial<Record<Major, number>> = { 'Digital Marketing (DMK)': 473 };
-const YEAR_MAJOR_THOIHOC_OVERRIDE: Partial<Record<Major, number>> = { 'Công nghệ ô tô (VIT)': 38 };
+// Công nghệ ô tô (VIT): giá trị gốc từ parser (42) đã được xác nhận đúng — không override.
+const YEAR_MAJOR_THOIHOC_OVERRIDE: Partial<Record<Major, number>> = {};
 
 function filterDauVao(dauvao: DauVaoLifetimeRow[], f: FilterState): DauVaoLifetimeRow[] {
   return dauvao.filter((r) => {
@@ -731,6 +732,26 @@ export function causeDetailSummary(students: StudentRecord[], f: FilterState, st
 // --- Cause summary từ nguồn Detail1-88 (Thống kê năm 2025-2026.xlsx): quét Cột H = "Thôi học",
 //     đọc Ghi chú/Lý do (GVCN), phân loại nhóm nguyên nhân bằng quy tắc từ khóa. 207 sinh viên
 //     thôi học duy nhất (loại trùng lặp do 1 SV có thể xuất hiện ở nhiều sheet Detail). ---
+// Nhãn "nội dung chính" — phân loại chi tiết hơn nhóm nguyên nhân, rút ra trực tiếp từ nội dung
+// Ghi chú/Lý do thực tế của GVCN (không bịa nội dung), dùng để hiển thị gọn thay cho trích dẫn dài.
+function tagOfDetailCause(text: string): string | null {
+  const t = text.trim().toLowerCase();
+  if (!t) return null;
+  if (/nghĩa vụ quân sự|nvqs|nhập ngũ|bộ đội|quân sự/.test(t)) return 'TH vì đi nghĩa vụ quân sự';
+  if (t.includes('du học')) return 'TH để đi du học / định cư nước ngoài';
+  if (/chuyển trường|trường khác|trường gần nhà|học lại lớp 10/.test(t)) return 'TH vì chuyển trường / chuyển nơi học';
+  if (/lập gia đình|việc gia đình|hoàn cảnh gia đình|lý do gia đình/.test(t)) return 'TH vì lý do gia đình';
+  if (/nợ học phí|không đóng học phí|không đủ chi trả|khó khăn tài chính/.test(t)) return 'TH vì không đóng được học phí / khó khăn kinh tế';
+  if (/tai nạn|gãy tay|gãy chân|bất tỉnh|sức khỏe/.test(t)) return 'TH vì lý do sức khỏe / tai nạn';
+  if (/ôn thi đại học|ôn thi lại đại học|ôn thi đh/.test(t)) return 'TH để ôn thi Đại học';
+  if (/không phù hợp|muốn học ngành khác|chuyển ngành|không theo được|không theo học được/.test(t)) return 'TH vì không phù hợp ngành / muốn đổi ngành';
+  if (/đi làm|kiếm tiền/.test(t)) return 'TH để đi làm';
+  if (/nghỉ ngay từ đầu|chưa đi học buổi nào|thôi học từ đầu|ko đi học từ đầu/.test(t)) return 'Nghỉ học ngay từ đầu, chưa từng đến lớp';
+  if (/không liên lạc được|mất liên lạc|sai số điện thoại|sai sdt|không nghe máy|không phản hồi/.test(t)) return 'Mất liên lạc với SV/phụ huynh, không rõ lý do';
+  if (t.includes('không rõ lý do')) return 'Không rõ lý do cụ thể';
+  return 'Lý do khác (đã ghi nhận, chưa gom nhóm cụ thể)';
+}
+
 export function causeSummaryFromDetail(rows: DetailCauseRow[], f: FilterState): CauseDetailRow[] {
   const filtered = rows.filter((r) => {
     if (f.months.length && !f.months.includes(r.month)) return false;
@@ -740,23 +761,27 @@ export function causeSummaryFromDetail(rows: DetailCauseRow[], f: FilterState): 
     return true;
   });
   const total = filtered.length || 1;
-  const groups = new Map<CauseGroup, { so_luong: number; examples: string[] }>();
+  const groups = new Map<CauseGroup, { so_luong: number; tags: Map<string, number> }>();
   for (const r of filtered) {
+    const tag = tagOfDetailCause(r.ly_do_text) ?? '(Không ghi chú / chưa cập nhật lý do)';
     const ex = groups.get(r.nhom);
     if (ex) {
       ex.so_luong++;
-      if (r.ly_do_text && ex.examples.length < 3 && !ex.examples.includes(r.ly_do_text)) ex.examples.push(r.ly_do_text);
+      ex.tags.set(tag, (ex.tags.get(tag) ?? 0) + 1);
     } else {
-      groups.set(r.nhom, { so_luong: 1, examples: r.ly_do_text ? [r.ly_do_text] : [] });
+      groups.set(r.nhom, { so_luong: 1, tags: new Map([[tag, 1]]) });
     }
   }
   return Array.from(groups.entries())
-    .map(([nhom, v]) => ({
-      nhom,
-      ly_do: v.examples.length ? v.examples.join(' | ') : '(Không ghi chú / chưa cập nhật lý do)',
-      so_luong: v.so_luong,
-      ti_le: (v.so_luong / total) * 100,
-    }))
+    .map(([nhom, v]) => {
+      const topTags = Array.from(v.tags.entries()).sort((a, b) => b[1] - a[1]).slice(0, 3);
+      return {
+        nhom,
+        ly_do: topTags.map(([tag, n]) => `${tag} (${n})`).join('; '),
+        so_luong: v.so_luong,
+        ti_le: (v.so_luong / total) * 100,
+      };
+    })
     .sort((a, b) => b.so_luong - a.so_luong);
 }
 
