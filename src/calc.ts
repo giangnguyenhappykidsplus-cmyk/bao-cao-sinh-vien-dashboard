@@ -76,10 +76,21 @@ export function computeKpi(stats: MonthlyStat[], baseline: BaselineIntake[], f: 
   const chuyenNganh = filtered.reduce((s, x) => s + x.chuyen_nganh, 0);
   const nghiHocDaiNgay = lastStats.reduce((s, x) => s + x.nghi_hoc_dai_ngay, 0);
   const nhomNguyCo = thoiHoc + nghiHocDaiNgay + baoLuu;
+  // thoi_hoc_pct = TRUNG BINH cong cua ti le % Thoi hoc tung thang (moi thang = thoi_hoc(thang)/mau_so(thang)),
+  // KHONG phai cong don thoi_hoc ca ky chia cho baseline — theo yeu cau doi chieu voi sheet nguon
+  const monthlyDropoutPcts = sortMonths(f.months).map((month) => {
+    const monthStats = filtered.filter((s) => s.month === month);
+    const mThoiHoc = monthStats.reduce((s, x) => s + x.thoi_hoc, 0);
+    const mMauSo = monthStats.reduce((s, x) => s + x.mau_so, 0);
+    return mMauSo > 0 ? (mThoiHoc / mMauSo) * 100 : 0;
+  });
+  const thoiHocPctAvg = monthlyDropoutPcts.length > 0
+    ? monthlyDropoutPcts.reduce((a, b) => a + b, 0) / monthlyDropoutPcts.length
+    : 0;
   return {
     tong_sinh_vien_dau_ky: tongDauKy, dang_hoc: dangHoc,
     dang_hoc_pct: tongDauKy > 0 ? (dangHoc / tongDauKy) * 100 : 0,
-    thoi_hoc: thoiHoc, thoi_hoc_pct: tongDauKy > 0 ? (thoiHoc / tongDauKy) * 100 : 0,
+    thoi_hoc: thoiHoc, thoi_hoc_pct: thoiHocPctAvg,
     nghi_hoc_dai_ngay: nghiHocDaiNgay,
     nhom_nguy_co: nhomNguyCo, nhom_nguy_co_pct: tongDauKy > 0 ? (nhomNguyCo / tongDauKy) * 100 : 0,
     bao_luu: baoLuu, quay_lai: quayLai, chuyen_nganh: chuyenNganh,
@@ -266,23 +277,27 @@ export function dropoutByCohortFull(stats: MonthlyStat[], baseline: BaselineInta
   }).sort((a, b) => b.thoi_hoc - a.thoi_hoc);
 }
 
-// Bao luu trend (monthly) with %
-export function baoLuuTrend(stats: MonthlyStat[], baseline: BaselineIntake[], f: FilterState): Array<{ month: MonthKey; bao_luu: number; ti_le: number }> {
+// Bao luu trend (monthly) with % — ti le = bao_luu(thang)/mau_so(thang) dung theo cong thuc Quy uoc,
+// khop truc tiep voi cot "% Bao luu" cua sheet "Thong ke tinh trang chi tiet" (khong dung baseline hang so)
+export function baoLuuTrend(stats: MonthlyStat[], _baseline: BaselineIntake[], f: FilterState): Array<{ month: MonthKey; bao_luu: number; ti_le: number }> {
   const filtered = filterStats(stats, f);
-  const totalBaseline = filterBaseline(baseline, f).reduce((s, b) => s + b.count, 0);
   return sortMonths(f.months).map((month) => {
-    const bao_luu = filtered.filter((s) => s.month === month).reduce((sum, x) => sum + x.bao_luu, 0);
-    return { month, bao_luu, ti_le: totalBaseline > 0 ? (bao_luu / totalBaseline) * 100 : 0 };
+    const monthStats = filtered.filter((s) => s.month === month);
+    const bao_luu = monthStats.reduce((sum, x) => sum + x.bao_luu, 0);
+    const mauSo = monthStats.reduce((sum, x) => sum + x.mau_so, 0);
+    return { month, bao_luu, ti_le: mauSo > 0 ? (bao_luu / mauSo) * 100 : 0 };
   });
 }
 
-// Dropout trend (monthly) with %
-export function dropoutTrendWithPct(stats: MonthlyStat[], baseline: BaselineIntake[], f: FilterState): Array<{ month: MonthKey; thoi_hoc: number; ti_le: number }> {
+// Dropout trend (monthly) with % — ti le = thoi_hoc(thang)/mau_so(thang), mau_so = Dang hoc(T-1) + NHDN(T-1) + Quay lai(T)
+// lay truc tiep tu cot "Tong sv dau ky" cua sheet "Thong ke tinh trang chi tiet", khop chinh xac tung thang voi sheet nguon
+export function dropoutTrendWithPct(stats: MonthlyStat[], _baseline: BaselineIntake[], f: FilterState): Array<{ month: MonthKey; thoi_hoc: number; ti_le: number }> {
   const filtered = filterStats(stats, f);
-  const totalBaseline = filterBaseline(baseline, f).reduce((s, b) => s + b.count, 0);
   return sortMonths(f.months).map((month) => {
-    const thoi_hoc = filtered.filter((s) => s.month === month).reduce((sum, x) => sum + x.thoi_hoc, 0);
-    return { month, thoi_hoc, ti_le: totalBaseline > 0 ? (thoi_hoc / totalBaseline) * 100 : 0 };
+    const monthStats = filtered.filter((s) => s.month === month);
+    const thoi_hoc = monthStats.reduce((sum, x) => sum + x.thoi_hoc, 0);
+    const mauSo = monthStats.reduce((sum, x) => sum + x.mau_so, 0);
+    return { month, thoi_hoc, ti_le: mauSo > 0 ? (thoi_hoc / mauSo) * 100 : 0 };
   });
 }
 

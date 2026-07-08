@@ -60,6 +60,7 @@ export interface MonthlyStat {
   cohort: CohortKey;
   system: TrainingSystem;
   major: Major;
+  mau_so: number; // Mẫu số(T) = Đang học(T-1) + NHDN(T-1) + Quay lại(T), theo đúng "Tổng sv đầu kỳ" của sheet nguồn
   dang_hoc: number;
   nghi_hoc_dai_ngay: number; // lũy kế tính đến tháng này
   bao_luu: number; // lũy kế
