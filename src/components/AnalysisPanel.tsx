@@ -13,6 +13,7 @@ import {
   causeSummary, causeDetailSummary, causeSummaryFromDetail, nhdnByMajor, riskByMajorFull, riskByCohortFull,
   baoLuuTrend, baoLuuByMajorFull, baoLuuByCohortFull, dropoutByMajorYearFull, dropoutByCohortYearFull,
   lifetimeByCohort, lifetimeByMajor, lifetimeCrossTab,
+  lifetimeByCohortBaoLuu, lifetimeByMajorBaoLuu, lifetimeCrossTabBaoLuu,
   monthlyEnrollmentTrend, statusDonutData, returnTrend, returnByMajor, majorSystemMatrix,
   aiRetention, aiDropout, aiNhdn, aiRiskGroup, aiBaoLuu,
 } from '../calc';
@@ -57,7 +58,7 @@ export function AnalysisPanel({
     switch (drillKey) {
       case 'dang_hoc': return <DangHocAnalysis stats={stats} baseline={baseline} filter={filter} kpi={kpi} />;
       case 'thoi_hoc': return <ThoiHocAnalysis stats={stats} baseline={baseline} students={students} dauvao={dauvao} detailCauses={detailCauses} filter={filter} kpi={kpi} />;
-      case 'bao_luu': return <BaoLuuAnalysis stats={stats} baseline={baseline} students={students} filter={filter} kpi={kpi} />;
+      case 'bao_luu': return <BaoLuuAnalysis stats={stats} baseline={baseline} students={students} dauvao={dauvao} filter={filter} kpi={kpi} />;
       case 'nghi_hoc_dai_ngay': return <NhdnAnalysis stats={stats} students={students} filter={filter} />;
       case 'nhom_nguy_co': return <NguyCoAnalysis stats={stats} baseline={baseline} filter={filter} kpi={kpi} />;
       case 'quay_lai': return <QuayLaiAnalysis stats={stats} filter={filter} />;
@@ -482,20 +483,159 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filt
 }
 
 // ==================== CARD 3: BẢO LƯU ====================
-function BaoLuuAnalysis({ stats, baseline, students, filter, kpi }: any) {
+// Áp dụng cùng cấu trúc Phần A (lũy kế toàn khóa) / Phần B (theo năm thống kê) và cùng quy tắc
+// bôi màu như Thẻ "Thôi học". Riêng mục gom nhóm nguyên nhân (B.4) GIỮ NGUYÊN quy tắc bản cũ
+// (causeDetailSummary theo StudentRecord, KHÔNG quét lại Detail1-88) theo yêu cầu người phụ trách.
+function BaoLuuAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any) {
+  void baseline; void kpi;
+
+  // ---------- PHẦN A: Tổng quan lũy kế toàn khóa (nguồn: Đầu vào các khóa.xlsx) ----------
+  const lifeCohort = lifetimeByCohortBaoLuu(dauvao, filter);
+  const lifeCross = lifetimeCrossTabBaoLuu(dauvao, filter);
+  const lifeMajor = lifetimeByMajorBaoLuu(dauvao, filter);
+  const lifeTop5ByCount = new Set(
+    [...lifeMajor].sort((a: any, b: any) => b.bao_luu - a.bao_luu).slice(0, 5).map((r: any) => r.major),
+  );
+  const lifeTop5ByRate = new Set(
+    [...lifeMajor].sort((a: any, b: any) => b.ti_le - a.ti_le).slice(0, 5).map((r: any) => r.major),
+  );
+  const lifeTop5ByTotal = new Set(
+    [...lifeMajor].sort((a: any, b: any) => b.total - a.total).slice(0, 5).map((r: any) => r.major),
+  );
+  // A.2 matrix: top 5 ngành theo tỷ lệ, quét riêng theo TỪNG cột Khóa
+  const top5PerCohort = (key: 'k23' | 'k24' | 'k25') => {
+    const withPct = lifeCross.map((r: any) => ({ major: r.major, pct: r[`${key}_total`] > 0 ? (r[`${key}_bao_luu`] / r[`${key}_total`]) * 100 : 0 }));
+    return new Set(withPct.sort((a, b) => b.pct - a.pct).slice(0, 5).map((r) => r.major));
+  };
+  const top5K23 = top5PerCohort('k23');
+  const top5K24 = top5PerCohort('k24');
+  const top5K25 = top5PerCohort('k25');
+  const crossCellPct = (bl: number, tot: number) => (tot > 0 ? (bl / tot) * 100 : 0);
+
+  // ---------- PHẦN B: Phân tích theo năm thống kê (T7/2025–T6/2026) ----------
   const trend = baoLuuTrend(stats, baseline, filter);
   const byMajor = baoLuuByMajorFull(stats, baseline, filter);
   const byCohort = baoLuuByCohortFull(stats, baseline, filter);
-  const causes = causeSummary(students, { ...filter, months: filter.months } as any);
-  const insight = aiBaoLuu(trend, byMajor, byCohort, kpi);
-  const maxMajorPct = Math.max(...byMajor.map((m: any) => m.ti_le), 1);
+  const insight = aiBaoLuu(trend, byMajor, byCohort, kpi, lifeMajor, lifeCohort);
+  const yearTop3ByCount = new Set(
+    [...byMajor].sort((a: any, b: any) => b.bao_luu - a.bao_luu).slice(0, 3).map((r: any) => r.major),
+  );
 
   const comboData = trend.map((t: any) => ({ month: MONTH_LABELS[t.month as MonthKey], bao_luu: t.bao_luu, ti_le: Math.round(t.ti_le * 100) / 100 }));
-  void causes;
+
   return (
     <>
+      {/* ============ PHẦN A — TỔNG QUAN VỀ TÌNH TRẠNG BẢO LƯU (lũy kế toàn khóa) ============ */}
+      <div className="flex items-center gap-2 pt-1">
+        <span className="h-5 w-1 rounded-full bg-accent" />
+        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-200">Phần A: Tổng quan về tình trạng bảo lưu (lũy kế toàn khóa, gộp Cao đẳng + Trung cấp)</h3>
+      </div>
+
+      {/* A.1 Bảo lưu theo Khóa */}
+      <div className="flex items-center gap-2 pt-1">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">A.1 Bảo lưu theo Khóa</h4>
+      </div>
+      <div className="grid gap-4 md:grid-cols-3">
+        {lifeCohort.map((r: any) => {
+          const pctColor = r.ti_le > 20 ? 'text-red-400' : r.ti_le > 10 ? 'text-amber-400' : 'text-emerald-400';
+          return (
+            <Card key={r.cohort}>
+              <div className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-semibold text-slate-100">Khóa {r.cohort}</span>
+                  <span className={`text-xl font-bold tabular-nums ${pctColor}`}>{fmtPct(r.ti_le, 1)}</span>
+                </div>
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                  <span>Bảo lưu: <span className="font-semibold text-violet-400">{fmtNum(r.bao_luu)}</span></span>
+                  <span>Tổng tuyển: {fmtNum(r.total)}</span>
+                </div>
+                <div className="mt-2 h-2 overflow-hidden rounded-full bg-ink-700">
+                  <div className="h-full rounded-full" style={{ width: `${Math.min(100, r.ti_le * 2)}%`, background: pctColor === 'text-red-400' ? COLORS.danger : pctColor === 'text-amber-400' ? COLORS.warn : COLORS.violet }} />
+                </div>
+              </div>
+            </Card>
+          );
+        })}
+      </div>
+
+      {/* A.3 Bảo lưu theo Ngành học (đẩy lên trước A.2) */}
       <Card>
-        <CardHeader title="3.1 Xu hướng bảo lưu theo tháng (Combo)" subtitle="Cột: số lượng · Đường: tỷ lệ %" icon={<TrendingDown className="h-4 w-4" />} />
+        <CardHeader title="A.3 Bảo lưu theo Ngành học" subtitle="Lũy kế từ tuyển sinh đến T6/2026 · gộp mọi Khóa & Hệ · xếp giảm dần theo số lượng" icon={<BarChart3 className="h-4 w-4" />} />
+        <div className="max-h-[420px] overflow-auto p-4">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-ink-850">
+              <tr className="border-b border-ink-700/60 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-2 font-medium">Ngành</th>
+                <th className="px-2 py-2 text-right font-medium">Bảo lưu lũy kế</th>
+                <th className="px-2 py-2 text-right font-medium">Tổng tuyển</th>
+                <th className="py-2 pl-2 text-right font-medium">Tỷ lệ (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lifeMajor.map((r: any) => {
+                const hlCount = lifeTop5ByCount.has(r.major);
+                const hlRate = lifeTop5ByRate.has(r.major);
+                const hlTotal = lifeTop5ByTotal.has(r.major);
+                return (
+                  <tr key={r.major} className="border-b border-ink-800/60">
+                    <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${hlCount ? 'rounded bg-red-500/20 text-red-300' : 'text-slate-100'}`}>{fmtNum(r.bao_luu)}{hlCount && ' 🔴'}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums ${hlTotal ? 'rounded bg-red-500/20 text-red-300 font-semibold' : 'text-slate-400'}`}>{fmtNum(r.total)}{hlTotal && ' 🔴'}</td>
+                    <td className={`py-1.5 pl-2 text-right tabular-nums font-bold ${hlRate ? 'rounded bg-red-500/20 text-red-300' : 'text-slate-300'}`}>{fmtPct(r.ti_le, 1)}{hlRate && ' 🔴'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] text-slate-500">🔴 Bôi đỏ: cột "Bảo lưu lũy kế" = Top 5 ngành số lượng bảo lưu cao nhất · cột "Tổng tuyển" = Top 5 ngành có quy mô tuyển sinh lớn nhất · cột "Tỷ lệ" = Top 5 ngành tỷ lệ bảo lưu cao nhất (3 tập hợp tính độc lập, có thể trùng hoặc khác ngành).</p>
+        </div>
+      </Card>
+
+      {/* A.2 Thống kê ma trận ngành theo khóa */}
+      <Card>
+        <CardHeader title="A.2 Thống kê ma trận ngành theo khóa" subtitle="Đối soát chéo Khóa × Ngành — số ca bảo lưu / tổng tuyển (Tính tỉ lệ phần trăm), lũy kế toàn khóa" icon={<Users className="h-4 w-4" />} />
+        <div className="max-h-[420px] overflow-auto p-4">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-ink-850">
+              <tr className="border-b border-ink-700/60 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-2 font-medium">Ngành</th>
+                <th className="px-2 py-2 text-center font-medium">K23</th>
+                <th className="px-2 py-2 text-center font-medium">K24</th>
+                <th className="px-2 py-2 text-center font-medium">K25</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lifeCross.map((r: any) => {
+                const pctK23 = crossCellPct(r.k23_bao_luu, r.k23_total);
+                const pctK24 = crossCellPct(r.k24_bao_luu, r.k24_total);
+                const pctK25 = crossCellPct(r.k25_bao_luu, r.k25_total);
+                const hlK23 = top5K23.has(r.major);
+                const hlK24 = top5K24.has(r.major);
+                const hlK25 = top5K25.has(r.major);
+                return (
+                  <tr key={r.major} className="border-b border-ink-800/60">
+                    <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${hlK23 ? 'rounded bg-red-500/20 font-semibold text-red-300' : 'text-slate-300'}`}>{fmtNum(r.k23_bao_luu)}/{fmtNum(r.k23_total)} ({fmtPct(pctK23, 1)}){hlK23 && ' 🔴'}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${hlK24 ? 'rounded bg-red-500/20 font-semibold text-red-300' : 'text-slate-300'}`}>{fmtNum(r.k24_bao_luu)}/{fmtNum(r.k24_total)} ({fmtPct(pctK24, 1)}){hlK24 && ' 🔴'}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${hlK25 ? 'rounded bg-red-500/20 font-semibold text-red-300' : 'text-slate-300'}`}>{fmtNum(r.k25_bao_luu)}/{fmtNum(r.k25_total)} ({fmtPct(pctK25, 1)}){hlK25 && ' 🔴'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] text-slate-500">Định dạng ô: Số ca bảo lưu / Tổng tuyển (Tính tỉ lệ phần trăm). 🔴 Bôi đỏ: Top 5 ngành có tỷ lệ cao nhất — quét riêng theo TỪNG cột Khóa (K23, K24, K25 độc lập nhau).</p>
+        </div>
+      </Card>
+
+      {/* ============ PHẦN B — PHÂN TÍCH BẢO LƯU THEO NĂM THỐNG KÊ (T7/2025–T6/2026) ============ */}
+      <div className="flex items-center gap-2 pt-3">
+        <span className="h-5 w-1 rounded-full bg-violet-500" />
+        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-200">Phần B · Phân tích bảo lưu theo năm thống kê (biến động T7/2025 – T6/2026)</h3>
+      </div>
+
+      {/* B.1 Combo chart */}
+      <Card>
+        <CardHeader title="B.1 Xu hướng bảo lưu theo tháng (Combo)" subtitle="Cột: số lượng · Đường: tỷ lệ % (mẫu số động theo Quy ước)" icon={<TrendingDown className="h-4 w-4" />} />
         <div className="px-2 pb-4 pt-3">
           <ResponsiveContainer width="100%" height={300}>
             <ComposedChart data={comboData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
@@ -513,8 +653,9 @@ function BaoLuuAnalysis({ stats, baseline, students, filter, kpi }: any) {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* B.2 By major table — Quy mô năm học, top 3 SỐ LƯỢNG cao nhất tô màu */}
         <Card>
-          <CardHeader title="3.2 Bảo lưu theo Ngành (Heatmap)" subtitle="Xếp top giảm dần" icon={<BarChart3 className="h-4 w-4" />} />
+          <CardHeader title="B.2 Bảo lưu theo Ngành trong năm" subtitle="Quy mô = SV đầu kỳ + Tuyển mới + Quay lại · tô màu 3 ngành SỐ LƯỢNG cao nhất" icon={<BarChart3 className="h-4 w-4" />} />
           <div className="max-h-[360px] overflow-auto p-4">
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-ink-850">
@@ -524,21 +665,25 @@ function BaoLuuAnalysis({ stats, baseline, students, filter, kpi }: any) {
                 </tr>
               </thead>
               <tbody>
-                {byMajor.map((r: any) => (
-                  <tr key={r.major} className="border-b border-ink-800/60">
-                    <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtNum(r.bao_luu)}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmtNum(r.quy_mo)}</td>
-                    <td className={`py-1.5 pl-2 text-right tabular-nums font-semibold ${heatColor(r.ti_le, maxMajorPct)}`}>{fmtPct(r.ti_le, 1)}</td>
-                  </tr>
-                ))}
+                {byMajor.map((r: any) => {
+                  const isTop3 = yearTop3ByCount.has(r.major);
+                  return (
+                    <tr key={r.major} className={`border-b border-ink-800/60 ${isTop3 ? 'bg-red-500/10' : ''}`}>
+                      <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
+                      <td className={`px-2 py-1.5 text-right tabular-nums font-bold ${isTop3 ? 'text-red-300' : 'text-slate-300'}`}>{fmtNum(r.bao_luu)}{isTop3 && ' 🔴'}</td>
+                      <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmtNum(r.quy_mo)}</td>
+                      <td className="py-1.5 pl-2 text-right tabular-nums font-semibold text-slate-300">{fmtPct(r.ti_le, 1)}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </Card>
 
+        {/* B.3 By cohort */}
         <Card>
-          <CardHeader title="3.3 Bảo lưu theo Khóa" subtitle="K23, K24, K25" icon={<Users className="h-4 w-4" />} />
+          <CardHeader title="B.3 Bảo lưu theo Khóa trong năm" subtitle="K23, K24, K25 — số lượng & tỷ lệ trong năm học" icon={<Users className="h-4 w-4" />} />
           <div className="p-4">
             <div className="space-y-3">
               {byCohort.map((r: any) => {
@@ -564,15 +709,16 @@ function BaoLuuAnalysis({ stats, baseline, students, filter, kpi }: any) {
         </Card>
       </div>
 
+      {/* B.4 Gom nhóm nguyên nhân bảo lưu — GIỮ NGUYÊN quy tắc bản cũ (theo yêu cầu), KHÔNG đổi sang Detail1-88 */}
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <CardHeader title="3.4 Gom nhóm nguyên nhân bảo lưu" subtitle="Bảng chi tiết — TUYỆT ĐỐI KHÔNG dùng biểu đồ tròn" icon={<Activity className="h-4 w-4" />} />
+          <CardHeader title="B.4 Gom nhóm nguyên nhân bảo lưu" subtitle="Bảng chi tiết — TUYỆT ĐỐI KHÔNG dùng biểu đồ tròn" icon={<Activity className="h-4 w-4" />} />
           <div className="max-h-[280px] overflow-auto p-4">
             <CauseDetailTable rows={causeDetailSummary(students, filter, ['bao_luu'])} />
           </div>
         </Card>
-        <div className="lg:col-span-3">
-          <AIInsightBox insight={insight} title="3.5 AI Phân tích: Lý do bảo lưu theo Khóa/Hệ/Ngành" />
+        <div className="lg:col-span-2">
+          <AIInsightBox insight={insight} title="B.5 AI Phân tích: Lý do bảo lưu (trong năm + lũy kế toàn khóa)" />
         </div>
       </div>
     </>

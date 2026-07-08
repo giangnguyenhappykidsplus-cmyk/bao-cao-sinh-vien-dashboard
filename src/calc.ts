@@ -15,8 +15,11 @@ import {
   type FilterState,
   type KpiSnapshot,
   type LifetimeByCohortRow,
+  type LifetimeByCohortBaoLuuRow,
   type LifetimeByMajorRow,
+  type LifetimeByMajorBaoLuuRow,
   type LifetimeCrossTabRow,
+  type LifetimeCrossTabBaoLuuRow,
   type Major,
   type MajorRetentionRow,
   type MonthKey,
@@ -346,6 +349,51 @@ export function lifetimeByMajor(dauvao: DauVaoLifetimeRow[], f: FilterState): Li
 }
 
 // ============================================================
+// PHẦN A (Bảo lưu) — cùng công thức/quy tắc như Thôi học, đọc từ cùng nguồn "Đầu vào các khóa.xlsx"
+// (không có hiệu chỉnh đối soát thủ công nào cho Bảo lưu — dùng nguyên giá trị từ parser)
+// ============================================================
+
+export function lifetimeByCohortBaoLuu(dauvao: DauVaoLifetimeRow[], f: FilterState): LifetimeByCohortBaoLuuRow[] {
+  const filtered = filterDauVao(dauvao, f);
+  const cohorts: CohortKey[] = f.cohorts.length ? f.cohorts : ['K23', 'K24', 'K25'];
+  return cohorts.map((cohort) => {
+    const rows = filtered.filter((r) => r.cohort === cohort);
+    const bao_luu = rows.reduce((s, r) => s + r.bao_luu, 0);
+    const total = rows.reduce((s, r) => s + r.total, 0);
+    return { cohort, bao_luu, total, ti_le: total > 0 ? (bao_luu / total) * 100 : 0 };
+  });
+}
+
+export function lifetimeCrossTabBaoLuu(dauvao: DauVaoLifetimeRow[], f: FilterState): LifetimeCrossTabBaoLuuRow[] {
+  const filtered = filterDauVao(dauvao, f);
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(dauvao);
+  return majors.map((major) => {
+    const get = (c: CohortKey) => {
+      const r = filtered.find((x) => x.major === major && x.cohort === c);
+      return { bao_luu: r?.bao_luu ?? 0, total: r?.total ?? 0 };
+    };
+    const k23 = get('K23'), k24 = get('K24'), k25 = get('K25');
+    return {
+      major,
+      k23_bao_luu: k23.bao_luu, k23_total: k23.total,
+      k24_bao_luu: k24.bao_luu, k24_total: k24.total,
+      k25_bao_luu: k25.bao_luu, k25_total: k25.total,
+    };
+  });
+}
+
+export function lifetimeByMajorBaoLuu(dauvao: DauVaoLifetimeRow[], f: FilterState): LifetimeByMajorBaoLuuRow[] {
+  const filtered = filterDauVao(dauvao, f);
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(dauvao);
+  return majors.map((major) => {
+    const rows = filtered.filter((r) => r.major === major);
+    const bao_luu = rows.reduce((s, r) => s + r.bao_luu, 0);
+    const total = rows.reduce((s, r) => s + r.total, 0);
+    return { major, bao_luu, total, ti_le: total > 0 ? (bao_luu / total) * 100 : 0 };
+  }).sort((a, b) => b.bao_luu - a.bao_luu);
+}
+
+// ============================================================
 // PHẦN B — PHÂN TÍCH THÔI HỌC THEO NĂM THỐNG KÊ (T7/2025–T6/2026)
 // Quy mô trong năm học = Tổng SV đầu kỳ (mẫu số tháng đầu tiên trong giai đoạn lọc)
 //   + Tổng SV phát sinh trong năm (Tuyển mới + Quay lại)
@@ -403,24 +451,33 @@ export function dropoutTrendWithPct(stats: MonthlyStat[], _baseline: BaselineInt
   });
 }
 
-// Bao luu by major with %
-export function baoLuuByMajorFull(stats: MonthlyStat[], baseline: BaselineIntake[], f: FilterState): BaoLuuByMajorRow[] {
+// Bao luu by major — Quy mô trong năm học (cùng công thức Phần B của Thôi học):
+// Quy mô = SV đầu kỳ (mẫu số tháng đầu tiên) + Tuyển mới + Quay lại phát sinh trong năm
+export function baoLuuByMajorFull(stats: MonthlyStat[], _baseline: BaselineIntake[], f: FilterState): BaoLuuByMajorRow[] {
   const filtered = filterStats(stats, f);
+  const firstMonth = sortMonths(f.months)[0];
   const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(stats);
   return majors.map((m) => {
-    const bao_luu = filtered.filter((s) => s.major === m).reduce((sum, x) => sum + x.bao_luu, 0);
-    const quy_mo = baseline.filter((b) => b.major === m && matchesStat(b, f)).reduce((s, b) => s + b.count, 0);
+    const rows = filtered.filter((s) => s.major === m);
+    const bao_luu = rows.reduce((s, x) => s + x.bao_luu, 0);
+    const dauKy = rows.filter((s) => s.month === firstMonth).reduce((s, x) => s + x.mau_so, 0);
+    const phatSinh = rows.reduce((s, x) => s + x.tuyen_moi + x.quay_lai, 0);
+    const quy_mo = dauKy + phatSinh;
     return { major: m, bao_luu, quy_mo, ti_le: quy_mo > 0 ? (bao_luu / quy_mo) * 100 : 0 };
   }).sort((a, b) => b.bao_luu - a.bao_luu);
 }
 
-// Bao luu by cohort with %
-export function baoLuuByCohortFull(stats: MonthlyStat[], baseline: BaselineIntake[], f: FilterState): DropoutByCohortRow[] {
+// Bao luu by cohort — cùng công thức Quy mô như trên
+export function baoLuuByCohortFull(stats: MonthlyStat[], _baseline: BaselineIntake[], f: FilterState): DropoutByCohortRow[] {
   const filtered = filterStats(stats, f);
+  const firstMonth = sortMonths(f.months)[0];
   const cohorts: CohortKey[] = f.cohorts.length ? f.cohorts : ['K23', 'K24', 'K25'];
   return cohorts.map((c) => {
-    const bao_luu = filtered.filter((s) => s.cohort === c).reduce((sum, x) => sum + x.bao_luu, 0);
-    const quy_mo = baseline.filter((b) => b.cohort === c && matchesStat(b, f)).reduce((s, b) => s + b.count, 0);
+    const rows = filtered.filter((s) => s.cohort === c);
+    const bao_luu = rows.reduce((s, x) => s + x.bao_luu, 0);
+    const dauKy = rows.filter((s) => s.month === firstMonth).reduce((s, x) => s + x.mau_so, 0);
+    const phatSinh = rows.reduce((s, x) => s + x.tuyen_moi + x.quay_lai, 0);
+    const quy_mo = dauKy + phatSinh;
     return { cohort: c, thoi_hoc: bao_luu, quy_mo, ti_le: quy_mo > 0 ? (bao_luu / quy_mo) * 100 : 0 };
   });
 }
@@ -487,16 +544,29 @@ export function riskByMajorFull(stats: MonthlyStat[], f: FilterState): RiskByMaj
 }
 
 // AI: Bao luu insight
-export function aiBaoLuu(trend: Array<{ month: MonthKey; bao_luu: number; ti_le: number }>, byMajor: BaoLuuByMajorRow[], byCohort: DropoutByCohortRow[], kpi: KpiSnapshot): AiInsight {
+export function aiBaoLuu(
+  trend: Array<{ month: MonthKey; bao_luu: number; ti_le: number }>,
+  byMajor: BaoLuuByMajorRow[],
+  byCohort: DropoutByCohortRow[],
+  kpi: KpiSnapshot,
+  lifetimeMajor?: LifetimeByMajorBaoLuuRow[],
+  lifetimeCohort?: LifetimeByCohortBaoLuuRow[],
+): AiInsight {
   const sorted = [...trend].sort((a, b) => b.bao_luu - a.bao_luu);
   const peak = sorted[0];
   const avg = trend.reduce((s, x) => s + x.bao_luu, 0) / (trend.length || 1);
   const topMajor = byMajor[0];
   const topCohort = [...byCohort].sort((a, b) => b.thoi_hoc - a.thoi_hoc)[0];
+  const lifeTopMajor = lifetimeMajor?.[0];
+  const lifeTopCohort = lifetimeCohort?.slice().sort((a, b) => b.ti_le - a.ti_le)[0];
+  const lifetimeStr = [
+    lifeTopMajor ? `Ngành "${lifeTopMajor.major}" dẫn đầu số ca bảo lưu lũy kế trọn đời (${fmtNum(lifeTopMajor.bao_luu)}/${fmtNum(lifeTopMajor.total)} SV, ${fmtPct(lifeTopMajor.ti_le)})` : '',
+    lifeTopCohort ? `Khóa ${lifeTopCohort.cohort} có tỷ lệ bảo lưu trọn đời cao nhất (${fmtPct(lifeTopCohort.ti_le)})` : '',
+  ].filter(Boolean).join('; ');
   return {
-    hienTrang: `Giai đoạn lọc ghi nhận ${fmtNum(kpi.bao_luu)} ca bảo lưu. Tháng ${peak ? MONTH_LABELS[peak.month] : '-'} có lượng bảo lưu cao nhất (${fmtNum(peak?.bao_luu ?? 0)} ca). Ngành "${topMajor?.major}" dẫn đầu (${fmtNum(topMajor?.bao_luu ?? 0)} ca, ${fmtPct(topMajor?.ti_le ?? 0)}). Khóa ${topCohort?.cohort} có tỉ lệ bảo lưu cao nhất (${fmtPct(topCohort?.ti_le ?? 0)}).`,
+    hienTrang: `Giai đoạn lọc ghi nhận ${fmtNum(kpi.bao_luu)} ca bảo lưu. Tháng ${peak ? MONTH_LABELS[peak.month] : '-'} có lượng bảo lưu cao nhất (${fmtNum(peak?.bao_luu ?? 0)} ca). Ngành "${topMajor?.major}" dẫn đầu trong năm (${fmtNum(topMajor?.bao_luu ?? 0)} ca, ${fmtPct(topMajor?.ti_le ?? 0)}). Khóa ${topCohort?.cohort} có tỉ lệ bảo lưu trong năm cao nhất (${fmtPct(topCohort?.ti_le ?? 0)}).${lifetimeStr ? ` Tính lũy kế từ đầu khóa: ${lifetimeStr}.` : ''}`,
     nguyenNhan: `Bảo lưu thường bùng phát vào các điểm rơi rủi ro tương tự thôi học — áp lực tài chính, kết quả học tập yếu, và biến cố gia đình. Trung bình ${fmtNum(avg)} ca/tháng. Sinh viên chọn bảo lưu thay vì thôi học thường còn muốn quay lại nhưng cần thời gian giải quyết vấn đề cá nhân.`,
-    khuyenNghi: `Thiết lập "cửa sổ theo dõi bảo lưu": mỗi ca bảo lưu được phân công GVCN theo dõi hàng tháng, xác nhận tình trạng và lộ trình quay lại. Ngành "${topMajor?.major}" cần ưu tiên gắn cố vấn chuyên trách. Mở đợt quay lại tập trung vào tháng có ca phục hồi cao để tận dụng động lực.`,
+    khuyenNghi: `Thiết lập "cửa sổ theo dõi bảo lưu": mỗi ca bảo lưu được phân công GVCN theo dõi hàng tháng, xác nhận tình trạng và lộ trình quay lại. Ngành "${topMajor?.major}" cần ưu tiên gắn cố vấn chuyên trách${lifeTopMajor && lifeTopMajor.major !== topMajor?.major ? `, cùng với ngành "${lifeTopMajor.major}" (cao nhất lũy kế trọn đời)` : ''}. Mở đợt quay lại tập trung vào tháng có ca phục hồi cao để tận dụng động lực.`,
   };
 }
 

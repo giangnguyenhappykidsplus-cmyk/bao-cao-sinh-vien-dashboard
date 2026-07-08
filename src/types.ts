@@ -63,18 +63,19 @@ export interface MonthlyStat {
   mau_so: number; // Mẫu số(T) = Đang học(T-1) + NHDN(T-1) + Quay lại(T), theo đúng "Tổng sv đầu kỳ" của sheet nguồn
   dang_hoc: number;
   nghi_hoc_dai_ngay: number; // lũy kế tính đến tháng này
-  bao_luu: number; // lũy kế
+  bao_luu: number; // phát sinh trong tháng (đã đối soát: cột "Bảo lưu" trong sheet nguồn KHÔNG có hậu tố "lũy kế" như NHDN, tính cùng kiểu với "Thôi học")
   quay_lai: number; // phát sinh trong tháng
   thoi_hoc: number; // phát sinh trong tháng
   chuyen_nganh: number; // phát sinh trong tháng
   tuyen_moi: number; // phát sinh trong tháng — dùng để tính Quy mô trong năm học
 }
 
-// --- Lifetime cumulative dropout data (từ file "Đầu vào các khóa.xlsx", Cột J = tình trạng hiện tại) ---
+// --- Lifetime cumulative dropout/bảo lưu data (từ file "Đầu vào các khóa.xlsx", Cột J = tình trạng hiện tại) ---
 export interface DauVaoLifetimeRow {
   cohort: CohortKey;
   major: Major;
   thoi_hoc: number; // số ca "Thôi học" lũy kế trọn đời
+  bao_luu: number; // số ca "Bảo lưu" lũy kế trọn đời (tính đến T6/2026)
   total: number; // tổng SV ở tất cả tình trạng (mẫu số)
 }
 
@@ -97,6 +98,28 @@ export interface LifetimeCrossTabRow {
   k23_thoi_hoc: number; k23_total: number;
   k24_thoi_hoc: number; k24_total: number;
   k25_thoi_hoc: number; k25_total: number;
+}
+
+// --- Bản sao song song cho Bảo lưu (cùng công thức/quy tắc như Thôi học) ---
+export interface LifetimeByCohortBaoLuuRow {
+  cohort: CohortKey;
+  bao_luu: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeByMajorBaoLuuRow {
+  major: Major;
+  bao_luu: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeCrossTabBaoLuuRow {
+  major: Major;
+  k23_bao_luu: number; k23_total: number;
+  k24_bao_luu: number; k24_total: number;
+  k25_bao_luu: number; k25_total: number;
 }
 
 export type CauseGroup =
