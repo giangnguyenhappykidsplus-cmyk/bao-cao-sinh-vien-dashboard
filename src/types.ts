@@ -108,6 +108,15 @@ export type CauseGroup =
   | 'Gia đình'
   | 'Khác';
 
+export interface DetailCauseRow {
+  month: MonthKey;
+  cohort: CohortKey;
+  system: TrainingSystem;
+  major: Major;
+  nhom: CauseGroup;
+  ly_do_text: string;
+}
+
 export interface StudentRecord {
   id: string;
   ma_sv: string;

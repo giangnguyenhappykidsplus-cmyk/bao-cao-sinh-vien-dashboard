@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import type { FilterState, KpiDrillKey, TabKey } from './types';
 import { ALL_MONTHS } from './types';
-import { buildBaselineIntake, buildMonthlyStats, buildStudentRecords, buildDauVaoLifetime } from './data';
+import { buildBaselineIntake, buildMonthlyStats, buildStudentRecords, buildDauVaoLifetime, buildDetailCauses } from './data';
 import { computeKpi, aiRetention, computeCohortRetention, computeMajorRetention, queryStudents, type AiInsight, type DrillDownQuery } from './calc';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
@@ -19,6 +19,7 @@ const baseline = buildBaselineIntake();
 const stats = buildMonthlyStats(baseline);
 const students = buildStudentRecords(baseline, stats);
 const dauvaoLifetime = buildDauVaoLifetime();
+const detailCauses = buildDetailCauses();
 
 const DEFAULT_FILTER: FilterState = { months: [...ALL_MONTHS], systems: [], majors: [], cohorts: [] };
 
@@ -115,7 +116,7 @@ function App() {
 
         {tab === 'tong_quan' && (
           drill ? (
-            <AnalysisPanel drillKey={drill} stats={stats} baseline={baseline} students={students} dauvao={dauvaoLifetime} filter={filter} kpi={kpi} />
+            <AnalysisPanel drillKey={drill} stats={stats} baseline={baseline} students={students} dauvao={dauvaoLifetime} detailCauses={detailCauses} filter={filter} kpi={kpi} />
           ) : (
             <Tab1Overview stats={stats} baseline={baseline} students={students} filter={filter} onDrill={handleDrill} />
           )

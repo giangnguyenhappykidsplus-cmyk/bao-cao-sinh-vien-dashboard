@@ -6,11 +6,11 @@ import {
   ComposedChart,
 } from 'recharts';
 import { TrendingDown, BarChart3, Activity, AlertTriangle, ShieldAlert, Users, PieChart as PieIcon, HeartPulse } from 'lucide-react';
-import type { KpiDrillKey, FilterState, MonthlyStat, BaselineIntake, StudentRecord, MonthKey, DauVaoLifetimeRow } from '../types';
+import type { KpiDrillKey, FilterState, MonthlyStat, BaselineIntake, StudentRecord, MonthKey, DauVaoLifetimeRow, DetailCauseRow } from '../types';
 import { MONTH_LABELS, SAFE_RETENTION_THRESHOLD, fmtPct, fmtNum } from '../calc';
 import {
   computeCohortRetention, computeMajorRetention, computeSystemRetention, dropoutTrendWithPct,
-  causeSummary, causeDetailSummary, nhdnByMajor, riskByMajorFull, riskByCohortFull,
+  causeSummary, causeDetailSummary, causeSummaryFromDetail, nhdnByMajor, riskByMajorFull, riskByCohortFull,
   baoLuuTrend, baoLuuByMajorFull, baoLuuByCohortFull, dropoutByMajorYearFull, dropoutByCohortYearFull,
   lifetimeByCohort, lifetimeByMajor, lifetimeCrossTab,
   monthlyEnrollmentTrend, statusDonutData, returnTrend, returnByMajor, majorSystemMatrix,
@@ -48,21 +48,21 @@ function heatColor(pct: number, max: number): string {
 }
 
 export function AnalysisPanel({
-  drillKey, stats, baseline, students, dauvao, filter, kpi,
+  drillKey, stats, baseline, students, dauvao, detailCauses, filter, kpi,
 }: {
   drillKey: KpiDrillKey; stats: MonthlyStat[]; baseline: BaselineIntake[];
-  students: StudentRecord[]; dauvao: DauVaoLifetimeRow[]; filter: FilterState; kpi: any;
+  students: StudentRecord[]; dauvao: DauVaoLifetimeRow[]; detailCauses: DetailCauseRow[]; filter: FilterState; kpi: any;
 }) {
   const content = useMemo(() => {
     switch (drillKey) {
       case 'dang_hoc': return <DangHocAnalysis stats={stats} baseline={baseline} filter={filter} kpi={kpi} />;
-      case 'thoi_hoc': return <ThoiHocAnalysis stats={stats} baseline={baseline} students={students} dauvao={dauvao} filter={filter} kpi={kpi} />;
+      case 'thoi_hoc': return <ThoiHocAnalysis stats={stats} baseline={baseline} students={students} dauvao={dauvao} detailCauses={detailCauses} filter={filter} kpi={kpi} />;
       case 'bao_luu': return <BaoLuuAnalysis stats={stats} baseline={baseline} students={students} filter={filter} kpi={kpi} />;
       case 'nghi_hoc_dai_ngay': return <NhdnAnalysis stats={stats} students={students} filter={filter} />;
       case 'nhom_nguy_co': return <NguyCoAnalysis stats={stats} baseline={baseline} filter={filter} kpi={kpi} />;
       case 'quay_lai': return <QuayLaiAnalysis stats={stats} filter={filter} />;
     }
-  }, [drillKey, stats, baseline, students, dauvao, filter, kpi]);
+  }, [drillKey, stats, baseline, students, dauvao, detailCauses, filter, kpi]);
 
   return <div className="space-y-4 animate-slideUp">{content}</div>;
 }
@@ -234,16 +234,28 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
 }
 
 // ==================== CARD 2: THÔI HỌC ====================
-function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any) {
+function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filter, kpi }: any) {
   void baseline; void kpi;
 
-  // ---------- PHẦN A: Tổng quan lũy kế trọn đời (nguồn: Đầu vào các khóa.xlsx) ----------
+  // ---------- PHẦN A: Tổng quan lũy kế toàn khóa (nguồn: Đầu vào các khóa.xlsx) ----------
   const lifeCohort = lifetimeByCohort(dauvao, filter);
   const lifeCross = lifetimeCrossTab(dauvao, filter);
   const lifeMajor = lifetimeByMajor(dauvao, filter);
-  const lifeTop3Majors = new Set(
-    [...lifeMajor].sort((a: any, b: any) => b.ti_le - a.ti_le).slice(0, 3).map((r: any) => r.major),
+  const lifeTop5ByCount = new Set(
+    [...lifeMajor].sort((a: any, b: any) => b.thoi_hoc - a.thoi_hoc).slice(0, 5).map((r: any) => r.major),
   );
+  const lifeTop5ByRate = new Set(
+    [...lifeMajor].sort((a: any, b: any) => b.ti_le - a.ti_le).slice(0, 5).map((r: any) => r.major),
+  );
+  // A.2 matrix: top 5 ngành theo tỷ lệ, quét riêng theo TỪNG cột Khóa
+  const top5PerCohort = (key: 'k23' | 'k24' | 'k25') => {
+    const withPct = lifeCross.map((r: any) => ({ major: r.major, pct: r[`${key}_total`] > 0 ? (r[`${key}_thoi_hoc`] / r[`${key}_total`]) * 100 : 0 }));
+    return new Set(withPct.sort((a, b) => b.pct - a.pct).slice(0, 5).map((r) => r.major));
+  };
+  const top5K23 = top5PerCohort('k23');
+  const top5K24 = top5PerCohort('k24');
+  const top5K25 = top5PerCohort('k25');
+  const crossCellPct = (th: number, tot: number) => (tot > 0 ? (th / tot) * 100 : 0);
 
   // ---------- PHẦN B: Phân tích theo năm thống kê (T7/2025–T6/2026) ----------
   const trend = dropoutTrendWithPct(stats, baseline, filter);
@@ -253,8 +265,8 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
   const systemRows = computeSystemRetention(stats, baseline, filter);
   const total = trend.reduce((s: number, x: any) => s + x.thoi_hoc, 0);
   const insight = aiDropout(trend, causes, total, byMajor, byCohort, systemRows, lifeMajor, lifeCohort);
-  const yearTop3Majors = new Set(
-    [...byMajor].sort((a: any, b: any) => b.ti_le - a.ti_le).slice(0, 3).map((r: any) => r.major),
+  const yearTop3ByCount = new Set(
+    [...byMajor].sort((a: any, b: any) => b.thoi_hoc - a.thoi_hoc).slice(0, 3).map((r: any) => r.major),
   );
 
   const comboData = trend.map((t: any) => ({ month: MONTH_LABELS[t.month as MonthKey], thoi_hoc: t.thoi_hoc, ti_le: Math.round(t.ti_le * 100) / 100 }));
@@ -262,13 +274,16 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
 
   return (
     <>
-      {/* ============ PHẦN A — TỔNG QUAN VỀ TÌNH TRẠNG THÔI HỌC (lũy kế trọn đời) ============ */}
+      {/* ============ PHẦN A — TỔNG QUAN VỀ TÌNH TRẠNG THÔI HỌC (lũy kế toàn khóa) ============ */}
       <div className="flex items-center gap-2 pt-1">
         <span className="h-5 w-1 rounded-full bg-accent" />
-        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-200">Phần A · Tổng quan về tình trạng thôi học (lũy kế trọn đời, gộp Cao đẳng + Trung cấp)</h3>
+        <h3 className="text-sm font-bold uppercase tracking-wide text-slate-200">Phần A: Tổng quan về tình trạng thôi học (lũy kế toàn khóa, gộp Cao đẳng + Trung cấp)</h3>
       </div>
 
-      {/* A.1 So sánh nhanh 3 khóa */}
+      {/* A.1 Thôi học theo Khóa */}
+      <div className="flex items-center gap-2 pt-1">
+        <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-400">A.1 Thôi học theo Khóa</h4>
+      </div>
       <div className="grid gap-4 md:grid-cols-3">
         {lifeCohort.map((r: any) => {
           const pctColor = r.ti_le > 20 ? 'text-red-400' : r.ti_le > 10 ? 'text-amber-400' : 'text-emerald-400';
@@ -292,10 +307,42 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
         })}
       </div>
 
-      {/* A.2 Bảng đối soát chéo Khóa × Ngành */}
+      {/* A.3 Thôi học theo Ngành học (đẩy lên trước A.2 theo yêu cầu) */}
       <Card>
-        <CardHeader title="A.2 Đối soát chéo Khóa × Ngành (số ca thôi học / tổng tuyển, lũy kế trọn đời)" subtitle="Nguồn: Đầu vào các khóa.xlsx — Cột J (Tình trạng)" icon={<Users className="h-4 w-4" />} />
-        <div className="max-h-[400px] overflow-auto p-4">
+        <CardHeader title="A.3 Thôi học theo Ngành học" subtitle="Lũy kế từ tuyển sinh đến T6/2026 · gộp mọi Khóa & Hệ · xếp giảm dần theo số lượng" icon={<BarChart3 className="h-4 w-4" />} />
+        <div className="max-h-[420px] overflow-auto p-4">
+          <table className="w-full text-xs">
+            <thead className="sticky top-0 bg-ink-850">
+              <tr className="border-b border-ink-700/60 text-left text-[10px] uppercase tracking-wide text-slate-500">
+                <th className="py-2 pr-2 font-medium">Ngành</th>
+                <th className="px-2 py-2 text-right font-medium">Thôi học lũy kế</th>
+                <th className="px-2 py-2 text-right font-medium">Tổng tuyển</th>
+                <th className="py-2 pl-2 text-right font-medium">Tỷ lệ (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {lifeMajor.map((r: any) => {
+                const hlCount = lifeTop5ByCount.has(r.major);
+                const hlRate = lifeTop5ByRate.has(r.major);
+                return (
+                  <tr key={r.major} className="border-b border-ink-800/60">
+                    <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
+                    <td className={`px-2 py-1.5 text-right tabular-nums font-semibold ${hlCount ? 'rounded bg-red-500/20 text-red-300' : 'text-slate-100'}`}>{fmtNum(r.thoi_hoc)}{hlCount && ' 🔴'}</td>
+                    <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmtNum(r.total)}</td>
+                    <td className={`py-1.5 pl-2 text-right tabular-nums font-bold ${hlRate ? 'rounded bg-red-500/20 text-red-300' : 'text-slate-300'}`}>{fmtPct(r.ti_le, 1)}{hlRate && ' 🔴'}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          <p className="mt-2 text-[10px] text-slate-500">🔴 Bôi đỏ: cột "Thôi học lũy kế" = Top 5 ngành số lượng cao nhất trường · cột "Tỷ lệ" = Top 5 ngành tỷ lệ cao nhất trường (2 tập hợp tính độc lập, có thể trùng hoặc khác ngành).</p>
+        </div>
+      </Card>
+
+      {/* A.2 Thống kê ma trận ngành theo khóa */}
+      <Card>
+        <CardHeader title="A.2 Thống kê ma trận ngành theo khóa" subtitle="Đối soát chéo Khóa × Ngành — số ca thôi học / tổng tuyển (Tính tỉ lệ phần trăm), lũy kế toàn khóa" icon={<Users className="h-4 w-4" />} />
+        <div className="max-h-[420px] overflow-auto p-4">
           <table className="w-full text-xs">
             <thead className="sticky top-0 bg-ink-850">
               <tr className="border-b border-ink-700/60 text-left text-[10px] uppercase tracking-wide text-slate-500">
@@ -306,46 +353,25 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
               </tr>
             </thead>
             <tbody>
-              {lifeCross.map((r: any) => (
-                <tr key={r.major} className="border-b border-ink-800/60">
-                  <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
-                  <td className="px-2 py-1.5 text-center tabular-nums text-slate-300">{fmtNum(r.k23_thoi_hoc)}/{fmtNum(r.k23_total)}</td>
-                  <td className="px-2 py-1.5 text-center tabular-nums text-slate-300">{fmtNum(r.k24_thoi_hoc)}/{fmtNum(r.k24_total)}</td>
-                  <td className="px-2 py-1.5 text-center tabular-nums text-slate-300">{fmtNum(r.k25_thoi_hoc)}/{fmtNum(r.k25_total)}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {/* A.3 Bảng thôi học theo Ngành lũy kế (gộp tất cả khóa), top 3 tỷ lệ tô màu */}
-      <Card>
-        <CardHeader title="A.3 Thôi học theo Ngành học — lũy kế từ tuyển sinh đến T6/2026" subtitle="Gộp mọi Khóa & Hệ · xếp giảm dần theo số lượng · tô màu 3 ngành tỷ lệ cao nhất" icon={<BarChart3 className="h-4 w-4" />} />
-        <div className="max-h-[420px] overflow-auto p-4">
-          <table className="w-full text-xs">
-            <thead className="sticky top-0 bg-ink-850">
-              <tr className="border-b border-ink-700/60 text-left text-[10px] uppercase tracking-wide text-slate-500">
-                <th className="py-2 pr-2 font-medium">Ngành</th>
-                <th className="px-2 py-2 text-right font-medium">Thôi học (lũy kế)</th>
-                <th className="px-2 py-2 text-right font-medium">Tổng tuyển</th>
-                <th className="py-2 pl-2 text-right font-medium">Tỷ lệ</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lifeMajor.map((r: any) => {
-                const isTop3 = lifeTop3Majors.has(r.major);
+              {lifeCross.map((r: any) => {
+                const pctK23 = crossCellPct(r.k23_thoi_hoc, r.k23_total);
+                const pctK24 = crossCellPct(r.k24_thoi_hoc, r.k24_total);
+                const pctK25 = crossCellPct(r.k25_thoi_hoc, r.k25_total);
+                const hlK23 = top5K23.has(r.major);
+                const hlK24 = top5K24.has(r.major);
+                const hlK25 = top5K25.has(r.major);
                 return (
-                  <tr key={r.major} className={`border-b border-ink-800/60 ${isTop3 ? 'bg-red-500/10' : ''}`}>
+                  <tr key={r.major} className="border-b border-ink-800/60">
                     <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums font-semibold text-slate-100">{fmtNum(r.thoi_hoc)}</td>
-                    <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmtNum(r.total)}</td>
-                    <td className={`py-1.5 pl-2 text-right tabular-nums font-bold ${isTop3 ? 'text-red-300' : 'text-slate-300'}`}>{fmtPct(r.ti_le, 1)}{isTop3 && ' 🔴'}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${hlK23 ? 'rounded bg-red-500/20 font-semibold text-red-300' : 'text-slate-300'}`}>{fmtNum(r.k23_thoi_hoc)}/{fmtNum(r.k23_total)} ({fmtPct(pctK23, 1)}){hlK23 && ' 🔴'}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${hlK24 ? 'rounded bg-red-500/20 font-semibold text-red-300' : 'text-slate-300'}`}>{fmtNum(r.k24_thoi_hoc)}/{fmtNum(r.k24_total)} ({fmtPct(pctK24, 1)}){hlK24 && ' 🔴'}</td>
+                    <td className={`px-2 py-1.5 text-center tabular-nums ${hlK25 ? 'rounded bg-red-500/20 font-semibold text-red-300' : 'text-slate-300'}`}>{fmtNum(r.k25_thoi_hoc)}/{fmtNum(r.k25_total)} ({fmtPct(pctK25, 1)}){hlK25 && ' 🔴'}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
+          <p className="mt-2 text-[10px] text-slate-500">Định dạng ô: Số ca thôi học / Tổng tuyển (Tính tỉ lệ phần trăm). 🔴 Bôi đỏ: Top 5 ngành có tỷ lệ cao nhất — quét riêng theo TỪNG cột Khóa (K23, K24, K25 độc lập nhau).</p>
         </div>
       </Card>
 
@@ -375,9 +401,9 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        {/* B.2 By major table — Quy mô năm học, top 3 tỷ lệ tô màu */}
+        {/* B.2 By major table — Quy mô năm học, top 3 SỐ LƯỢNG cao nhất tô màu */}
         <Card>
-          <CardHeader title="B.2 Thôi học theo Ngành trong năm" subtitle="Quy mô = SV đầu kỳ + Tuyển mới + Quay lại · tô màu 3 ngành tỷ lệ cao nhất" icon={<BarChart3 className="h-4 w-4" />} />
+          <CardHeader title="B.2 Thôi học theo Ngành trong năm" subtitle="Quy mô = SV đầu kỳ + Tuyển mới + Quay lại · tô màu 3 ngành SỐ LƯỢNG cao nhất" icon={<BarChart3 className="h-4 w-4" />} />
           <div className="max-h-[360px] overflow-auto p-4">
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-ink-850">
@@ -388,13 +414,13 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
               </thead>
               <tbody>
                 {byMajor.map((r: any) => {
-                  const isTop3 = yearTop3Majors.has(r.major);
+                  const isTop3 = yearTop3ByCount.has(r.major);
                   return (
                     <tr key={r.major} className={`border-b border-ink-800/60 ${isTop3 ? 'bg-red-500/10' : ''}`}>
                       <td className="py-1.5 pr-2 text-slate-200">{r.major}</td>
-                      <td className="px-2 py-1.5 text-right tabular-nums text-slate-300">{fmtNum(r.thoi_hoc)}</td>
+                      <td className={`px-2 py-1.5 text-right tabular-nums font-bold ${isTop3 ? 'text-red-300' : 'text-slate-300'}`}>{fmtNum(r.thoi_hoc)}{isTop3 && ' 🔴'}</td>
                       <td className="px-2 py-1.5 text-right tabular-nums text-slate-400">{fmtNum(r.quy_mo)}</td>
-                      <td className={`py-1.5 pl-2 text-right tabular-nums font-bold ${isTop3 ? 'text-red-300' : 'text-slate-300'}`}>{fmtPct(r.ti_le, 1)}{isTop3 && ' 🔴'}</td>
+                      <td className="py-1.5 pl-2 text-right tabular-nums font-semibold text-slate-300">{fmtPct(r.ti_le, 1)}</td>
                     </tr>
                   );
                 })}
@@ -434,14 +460,17 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, filter, kpi }: any
       {/* B.4 Causes detailed table + B.5 AI Insights */}
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <CardHeader title="B.4 Gom nhóm nguyên nhân thôi học" subtitle="Bảng chi tiết — Nhóm nguyên nhân · Lý do · Số lượng · Tỷ lệ" icon={<Activity className="h-4 w-4" />} />
+          <CardHeader title="B.4 Gom nhóm nguyên nhân thôi học" subtitle="Quét Detail1–Detail88 · Cột H = Thôi học · phân tích Ghi chú GVCN · xếp giảm dần" icon={<Activity className="h-4 w-4" />} />
           <div className="max-h-[280px] overflow-auto p-4">
-            <CauseDetailTable rows={causeDetailSummary(students, filter, ['thoi_hoc'])} />
+            <CauseDetailTable rows={causeSummaryFromDetail(detailCauses, filter)} />
+            <p className="mt-2 text-[11px] text-slate-500">
+              Nguồn: {detailCauses.length} lượt "Thôi học" duy nhất quét từ Detail1–Detail88 (đã loại trùng lặp SV xuất hiện nhiều sheet), phân loại theo Ghi chú/Lý do GVCN.
+            </p>
           </div>
         </Card>
         <div className="lg:col-span-2">
           {/* B.5 AI Insights */}
-          <AIInsightBox insight={insight} title="B.5 AI Phân tích: Điểm rơi rủi ro thôi học (trong năm + lũy kế trọn đời)" />
+          <AIInsightBox insight={insight} title="B.5 AI Phân tích: Điểm rơi rủi ro thôi học (trong năm + lũy kế toàn khóa)" />
         </div>
       </div>
     </>

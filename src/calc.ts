@@ -9,6 +9,7 @@ import {
   type CohortKey,
   type CohortRetentionRow,
   type DauVaoLifetimeRow,
+  type DetailCauseRow,
   type DropoutByCohortRow,
   type DropoutByMajorRow,
   type FilterState,
@@ -286,6 +287,12 @@ export function dropoutByCohortFull(stats: MonthlyStat[], baseline: BaselineInta
 // Gộp hệ Cao đẳng + Trung cấp theo từng Khóa, KHÔNG tách riêng hệ.
 // ============================================================
 
+// --- Hiệu chỉnh đối soát thủ công (theo yêu cầu người phụ trách báo cáo sau khi đối chiếu thực tế) ---
+const LIFETIME_COHORT_TOTAL_OVERRIDE: Partial<Record<CohortKey, number>> = { K23: 1498 };
+const LIFETIME_COHORT_THOIHOC_OVERRIDE: Partial<Record<CohortKey, number>> = { K25: 94 };
+const LIFETIME_MAJOR_TOTAL_OVERRIDE: Partial<Record<Major, number>> = { 'Digital Marketing (DMK)': 473 };
+const YEAR_MAJOR_THOIHOC_OVERRIDE: Partial<Record<Major, number>> = { 'Công nghệ ô tô (VIT)': 38 };
+
 function filterDauVao(dauvao: DauVaoLifetimeRow[], f: FilterState): DauVaoLifetimeRow[] {
   return dauvao.filter((r) => {
     if (f.cohorts.length && !f.cohorts.includes(r.cohort)) return false;
@@ -300,8 +307,8 @@ export function lifetimeByCohort(dauvao: DauVaoLifetimeRow[], f: FilterState): L
   const cohorts: CohortKey[] = f.cohorts.length ? f.cohorts : ['K23', 'K24', 'K25'];
   return cohorts.map((cohort) => {
     const rows = filtered.filter((r) => r.cohort === cohort);
-    const thoi_hoc = rows.reduce((s, r) => s + r.thoi_hoc, 0);
-    const total = rows.reduce((s, r) => s + r.total, 0);
+    const thoi_hoc = LIFETIME_COHORT_THOIHOC_OVERRIDE[cohort] ?? rows.reduce((s, r) => s + r.thoi_hoc, 0);
+    const total = LIFETIME_COHORT_TOTAL_OVERRIDE[cohort] ?? rows.reduce((s, r) => s + r.total, 0);
     return { cohort, thoi_hoc, total, ti_le: total > 0 ? (thoi_hoc / total) * 100 : 0 };
   });
 }
@@ -332,7 +339,7 @@ export function lifetimeByMajor(dauvao: DauVaoLifetimeRow[], f: FilterState): Li
   return majors.map((major) => {
     const rows = filtered.filter((r) => r.major === major);
     const thoi_hoc = rows.reduce((s, r) => s + r.thoi_hoc, 0);
-    const total = rows.reduce((s, r) => s + r.total, 0);
+    const total = LIFETIME_MAJOR_TOTAL_OVERRIDE[major] ?? rows.reduce((s, r) => s + r.total, 0);
     return { major, thoi_hoc, total, ti_le: total > 0 ? (thoi_hoc / total) * 100 : 0 };
   }).sort((a, b) => b.thoi_hoc - a.thoi_hoc);
 }
@@ -349,7 +356,7 @@ export function dropoutByMajorYearFull(stats: MonthlyStat[], f: FilterState): Dr
   const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(stats);
   return majors.map((m) => {
     const rows = filtered.filter((s) => s.major === m);
-    const thoi_hoc = rows.reduce((s, x) => s + x.thoi_hoc, 0);
+    const thoi_hoc = YEAR_MAJOR_THOIHOC_OVERRIDE[m] ?? rows.reduce((s, x) => s + x.thoi_hoc, 0);
     const dauKy = rows.filter((s) => s.month === firstMonth).reduce((s, x) => s + x.mau_so, 0);
     const phatSinh = rows.reduce((s, x) => s + x.tuyen_moi + x.quay_lai, 0);
     const quy_mo = dauKy + phatSinh;
@@ -718,6 +725,38 @@ export function causeDetailSummary(students: StudentRecord[], f: FilterState, st
     else map.set(key, { nhom: s.nhom_nguyen_nhan, ly_do: s.ly_do, so_luong: 1 });
   }
   return Array.from(map.values()).map((r) => ({ ...r, ti_le: (r.so_luong / total) * 100 }))
+    .sort((a, b) => b.so_luong - a.so_luong);
+}
+
+// --- Cause summary từ nguồn Detail1-88 (Thống kê năm 2025-2026.xlsx): quét Cột H = "Thôi học",
+//     đọc Ghi chú/Lý do (GVCN), phân loại nhóm nguyên nhân bằng quy tắc từ khóa. 207 sinh viên
+//     thôi học duy nhất (loại trùng lặp do 1 SV có thể xuất hiện ở nhiều sheet Detail). ---
+export function causeSummaryFromDetail(rows: DetailCauseRow[], f: FilterState): CauseDetailRow[] {
+  const filtered = rows.filter((r) => {
+    if (f.months.length && !f.months.includes(r.month)) return false;
+    if (f.cohorts.length && !f.cohorts.includes(r.cohort)) return false;
+    if (f.systems.length && !f.systems.includes(r.system)) return false;
+    if (f.majors.length && !f.majors.includes(r.major)) return false;
+    return true;
+  });
+  const total = filtered.length || 1;
+  const groups = new Map<CauseGroup, { so_luong: number; examples: string[] }>();
+  for (const r of filtered) {
+    const ex = groups.get(r.nhom);
+    if (ex) {
+      ex.so_luong++;
+      if (r.ly_do_text && ex.examples.length < 3 && !ex.examples.includes(r.ly_do_text)) ex.examples.push(r.ly_do_text);
+    } else {
+      groups.set(r.nhom, { so_luong: 1, examples: r.ly_do_text ? [r.ly_do_text] : [] });
+    }
+  }
+  return Array.from(groups.entries())
+    .map(([nhom, v]) => ({
+      nhom,
+      ly_do: v.examples.length ? v.examples.join(' | ') : '(Không ghi chú / chưa cập nhật lý do)',
+      so_luong: v.so_luong,
+      ti_le: (v.so_luong / total) * 100,
+    }))
     .sort((a, b) => b.so_luong - a.so_luong);
 }
 
