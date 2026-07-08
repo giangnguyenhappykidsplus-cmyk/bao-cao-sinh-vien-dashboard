@@ -10,7 +10,7 @@ import type { KpiDrillKey, FilterState, MonthlyStat, BaselineIntake, StudentReco
 import { MONTH_LABELS, SAFE_RETENTION_THRESHOLD, fmtPct, fmtNum } from '../calc';
 import {
   computeCohortRetention, computeMajorRetention, computeSystemRetention, dropoutTrendWithPct,
-  causeSummary, causeDetailSummary, causeSummaryFromDetail, nhdnByMajor, riskByMajorFull, riskByCohortFull,
+  causeSummary, causeDetailSummary, nhdnByMajor, riskByMajorFull, riskByCohortFull,
   baoLuuTrend, baoLuuByMajorFull, baoLuuByCohortFull, dropoutByMajorYearFull, dropoutByCohortYearFull,
   lifetimeByCohort, lifetimeByMajor, lifetimeCrossTab,
   lifetimeByCohortBaoLuu, lifetimeByMajorBaoLuu, lifetimeCrossTabBaoLuu,
@@ -236,7 +236,7 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
 
 // ==================== CARD 2: THÔI HỌC ====================
 function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filter, kpi }: any) {
-  void baseline; void kpi;
+  void baseline; void kpi; void detailCauses;
 
   // ---------- PHẦN A: Tổng quan lũy kế toàn khóa (nguồn: Đầu vào các khóa.xlsx) ----------
   const lifeCohort = lifetimeByCohort(dauvao, filter);
@@ -465,12 +465,9 @@ function ThoiHocAnalysis({ stats, baseline, students, dauvao, detailCauses, filt
       {/* B.4 Causes detailed table + B.5 AI Insights */}
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <CardHeader title="B.4 Gom nhóm nguyên nhân thôi học" subtitle="Quét Detail1–Detail88 · Cột H = Thôi học · phân tích Ghi chú GVCN · xếp giảm dần" icon={<Activity className="h-4 w-4" />} />
+          <CardHeader title="B.4 Gom nhóm nguyên nhân thôi học" subtitle="Bảng chi tiết — TUYỆT ĐỐI KHÔNG dùng biểu đồ tròn" icon={<Activity className="h-4 w-4" />} />
           <div className="max-h-[280px] overflow-auto p-4">
-            <CauseDetailTable rows={causeSummaryFromDetail(detailCauses, filter)} contentLabel="Nội dung chính" />
-            <p className="mt-2 text-[11px] text-slate-500">
-              Nguồn: {detailCauses.length} lượt "Thôi học" duy nhất quét từ Detail1–Detail88 (đã loại trùng lặp SV xuất hiện nhiều sheet), phân loại theo Ghi chú/Lý do GVCN.
-            </p>
+            <CauseDetailTable rows={causeDetailSummary(students, filter, ['thoi_hoc'])} />
           </div>
         </Card>
         <div className="lg:col-span-2">
