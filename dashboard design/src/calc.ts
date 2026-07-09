@@ -888,7 +888,6 @@ export function aiMajorCrossAnalysis(ctx: MajorAiContext): AiInsight {
   const nguyenNhan = [
     ctx.nguyenNhanGocRe,
     cmp && Math.abs(cdRisk - tcRisk) > 3 ? ` Chênh lệch rủi ro giữa hai hệ (${fmtPct(Math.abs(cdRisk - tcRisk))}) cho thấy ${higher} chịu áp lực lớn hơn — ${ctx.raoCan.noi_tai_nganh}` : '',
-    ctx.docPhanII ? ` [Định tính từ Khoa]: ${ctx.docPhanII.slice(0, 180)}...` : '',
   ].filter(Boolean).join('');
 
   const khuyenNghi = [
