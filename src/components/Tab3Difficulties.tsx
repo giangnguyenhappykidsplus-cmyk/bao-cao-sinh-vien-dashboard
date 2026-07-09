@@ -3,6 +3,20 @@ import { AlertOctagon, ClipboardList, ShieldAlert } from 'lucide-react';
 import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS } from '../data';
 import { Card, CardHeader, Badge } from './ui';
 
+// Bôi đậm một cụm từ cụ thể trong đoạn văn (nếu có), phần còn lại giữ nguyên
+function HighlightText({ text, bold }: { text: string; bold?: string }) {
+  if (!bold) return <>{text}</>;
+  const idx = text.indexOf(bold);
+  if (idx === -1) return <>{text}</>;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <strong className="font-bold text-white">{bold}</strong>
+      {text.slice(idx + bold.length)}
+    </>
+  );
+}
+
 export function Tab3Difficulties() {
   return (
     <div className="space-y-4">
@@ -14,7 +28,7 @@ export function Tab3Difficulties() {
               <div className="flex items-start gap-3">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-red-500/15 text-xs font-bold text-red-300 ring-1 ring-red-500/30">{d.stt}</span>
                 <div className="flex-1">
-                  <p className="text-sm font-medium leading-relaxed text-slate-100">{d.kho_khan}</p>
+                  <p className="text-sm font-medium leading-relaxed text-slate-100"><HighlightText text={d.kho_khan} bold={d.nhan_manh} /></p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
                     <Badge tone="neutral">Chủ trì: {d.bo_phan_chu_tri}</Badge>
                   </div>

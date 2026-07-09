@@ -24,6 +24,14 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
+// Escape text, but wrap a specific substring in <strong> (used for Khó khăn — nhấn mạnh cụm từ)
+function escBold(s: string, bold?: string): string {
+  if (!bold) return esc(s);
+  const idx = s.indexOf(bold);
+  if (idx === -1) return esc(s);
+  return esc(s.slice(0, idx)) + '<strong>' + esc(bold) + '</strong>' + esc(s.slice(idx + bold.length));
+}
+
 function truncate(s: string, n: number): string {
   return s.length > n ? s.slice(0, n - 1) + '…' : s;
 }
@@ -376,7 +384,7 @@ export async function exportBghReport(p: PdfExportParams): Promise<void> {
   <h3 class="page-break">PHẦN 5: KHÓ KHĂN &ndash; ĐỀ XUẤT</h3>
   ${GLOBAL_DIFFICULTIES.map((d) => `
     <div class="diff-item">
-      <span class="stt">${d.stt}.</span> ${esc(d.kho_khan)}
+      <span class="stt">${d.stt}.</span> ${escBold(d.kho_khan, d.nhan_manh)}
       <div class="chu-tri">Chủ trì: ${esc(d.bo_phan_chu_tri)}</div>
       <div class="de-xuat"><strong>Đề xuất:</strong> ${esc(d.de_xuat)}</div>
     </div>`).join('')}

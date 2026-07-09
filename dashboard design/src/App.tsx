@@ -114,6 +114,7 @@ function App() {
                 </button>
               )}
             </div>
+            <p className="text-xs italic text-slate-500">Vui lòng click vào từng mục để theo dõi chi tiết.</p>
             <KpiCards kpi={kpi} quyMoDauKy={quyMoDauKyC1} dangHocHienTai={dangHocC1} activeDrill={drill} onDrill={handleDrill} onViewStudents={openStudentModal} onExportReport={handleExport} exporting={exporting} />
           </div>
         )}
