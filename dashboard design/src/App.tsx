@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import type { FilterState, KpiDrillKey, TabKey } from './types';
 import { ALL_MONTHS } from './types';
 import { buildBaselineIntake, buildMonthlyStats, buildStudentRecords, buildDauVaoLifetime, buildDetailCauses, buildDauVaoStatus, buildEnrollmentTimeline } from './data';
-import { computeKpi, aiRetention, computeCohortRetention, computeMajorRetention, queryStudents, type AiInsight, type DrillDownQuery } from './calc';
+import { computeKpi, aiRetention, computeCohortRetention, computeMajorRetention, queryStudents, quyModauKyLifetime, dangHocLifetime, type AiInsight, type DrillDownQuery } from './calc';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { KpiCards } from './components/KpiCards';
@@ -69,6 +69,10 @@ function App() {
   void chartRefs;
 
   const kpi = useMemo(() => computeKpi(stats, baseline, filter), [filter]);
+  // Quy mô & Đang học (Thẻ 1) — nguồn riêng "Đầu vào các khóa.xlsx" lũy kế, KHÔNG dùng kpi.tong_sinh_vien_dau_ky/kpi.dang_hoc
+  // (những field đó vẫn giữ nguyên để Thẻ 3 (Bảo lưu) và các nơi khác dùng làm mẫu số, không bị ảnh hưởng).
+  const quyMoDauKyC1 = useMemo(() => quyModauKyLifetime(dauvaoStatus, filter), [filter]);
+  const dangHocC1 = useMemo(() => dangHocLifetime(dauvaoStatus, filter), [filter]);
 
   // KPI card drill-down: toggle the analysis panel.
   // Direct student-list drill-down is handled via handleDrill → AnalysisPanel.
@@ -87,7 +91,7 @@ function App() {
       const majorRows = computeMajorRetention(stats, baseline, filter);
       const insight: AiInsight = aiRetention(kpi, cohortRows, majorRows);
 
-      await exportBghReport(kpi, filter, insight);
+      await exportBghReport(kpi, filter, insight, quyMoDauKyC1, dangHocC1);
     } catch (e) {
       console.error('PDF export failed:', e);
       alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
@@ -112,7 +116,7 @@ function App() {
                 </button>
               )}
             </div>
-            <KpiCards kpi={kpi} activeDrill={drill} onDrill={handleDrill} onViewStudents={openStudentModal} />
+            <KpiCards kpi={kpi} quyMoDauKy={quyMoDauKyC1} dangHocHienTai={dangHocC1} activeDrill={drill} onDrill={handleDrill} onViewStudents={openStudentModal} />
           </div>
         )}
 
