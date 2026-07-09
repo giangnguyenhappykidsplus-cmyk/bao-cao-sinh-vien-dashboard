@@ -192,7 +192,7 @@ export function Tab3DocumentRepo(_: { isAdmin?: boolean }) {
                     <h3 className="mt-3 text-sm font-bold uppercase text-white">BÁO CÁO TÌNH TRẠNG SINH VIÊN</h3>
                     <p className="mt-1 text-xs text-slate-300">
                       {viewTarget?.type === 'khoa' ? doc.nganh : `Ngành: ${doc.nganh} (${doc.tag})`}
-                      {' — Năm học 2026-2027'}
+                      {' — Năm học 2025-2026'}
                     </p>
                   </div>
 

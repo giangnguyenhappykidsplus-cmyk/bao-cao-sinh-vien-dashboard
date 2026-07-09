@@ -1,4 +1,4 @@
-// Type definitions — Hệ thống Báo cáo Tình trạng Sinh viên 2026-2027
+// Type definitions — Hệ thống Báo cáo Tình trạng Sinh viên 2025-2026
 
 export type CohortKey = 'K23' | 'K24' | 'K25';
 
@@ -60,12 +60,66 @@ export interface MonthlyStat {
   cohort: CohortKey;
   system: TrainingSystem;
   major: Major;
+  mau_so: number; // Mẫu số(T) = Đang học(T-1) + NHDN(T-1) + Quay lại(T), theo đúng "Tổng sv đầu kỳ" của sheet nguồn
   dang_hoc: number;
   nghi_hoc_dai_ngay: number; // lũy kế tính đến tháng này
-  bao_luu: number; // lũy kế
+  bao_luu: number; // phát sinh trong tháng (đã đối soát: cột "Bảo lưu" trong sheet nguồn KHÔNG có hậu tố "lũy kế" như NHDN, tính cùng kiểu với "Thôi học")
   quay_lai: number; // phát sinh trong tháng
   thoi_hoc: number; // phát sinh trong tháng
   chuyen_nganh: number; // phát sinh trong tháng
+  tuyen_moi: number; // phát sinh trong tháng — dùng để tính Quy mô trong năm học
+}
+
+// --- Lifetime cumulative dropout/bảo lưu data (từ file "Đầu vào các khóa.xlsx", Cột J = tình trạng hiện tại) ---
+export interface DauVaoLifetimeRow {
+  cohort: CohortKey;
+  major: Major;
+  thoi_hoc: number; // số ca "Thôi học" lũy kế trọn đời
+  bao_luu: number; // số ca "Bảo lưu" lũy kế trọn đời (tính đến T6/2026)
+  total: number; // tổng SV ở tất cả tình trạng (mẫu số)
+}
+
+export interface LifetimeByCohortRow {
+  cohort: CohortKey;
+  thoi_hoc: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeByMajorRow {
+  major: Major;
+  thoi_hoc: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeCrossTabRow {
+  major: Major;
+  k23_thoi_hoc: number; k23_total: number;
+  k24_thoi_hoc: number; k24_total: number;
+  k25_thoi_hoc: number; k25_total: number;
+}
+
+// --- Bản sao song song cho Bảo lưu (cùng công thức/quy tắc như Thôi học) ---
+export interface LifetimeByCohortBaoLuuRow {
+  cohort: CohortKey;
+  bao_luu: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeByMajorBaoLuuRow {
+  major: Major;
+  bao_luu: number;
+  total: number;
+  ti_le: number;
+}
+
+export interface LifetimeCrossTabBaoLuuRow {
+  major: Major;
+  k23_bao_luu: number; k23_total: number;
+  k24_bao_luu: number; k24_total: number;
+  k25_bao_luu: number; k25_total: number;
 }
 
 export type CauseGroup =
@@ -76,6 +130,15 @@ export type CauseGroup =
   | 'Động lực'
   | 'Gia đình'
   | 'Khác';
+
+export interface DetailCauseRow {
+  month: MonthKey;
+  cohort: CohortKey;
+  system: TrainingSystem;
+  major: Major;
+  nhom: CauseGroup;
+  ly_do_text: string;
+}
 
 export interface StudentRecord {
   id: string;
@@ -257,4 +320,25 @@ export interface NhdnByMajorRow {
   nghi_hoc_dai_ngay: number;
   mat_lien_lac: number;
   ti_le_mat_lien_lac: number;
+}
+
+// --- Thẻ 1 (Quy mô & Đang học): nguồn "Đầu vào các khóa.xlsx" (lũy kế, Cột J), tách riêng theo Hệ
+// đào tạo (không gộp Cao đẳng + Trung cấp như Thẻ 2/3) để phục vụ đối soát 1.1-1.5. ---
+export interface DauVaoStatusRow {
+  cohort: CohortKey;
+  system: TrainingSystem;
+  major: Major;
+  dang_hoc: number;
+  thoi_hoc: number;
+  bao_luu: number;
+  nghi_hoc_dai_ngay: number;
+  khac: number; // Đã tốt nghiệp + Chuyển lớp + Đình chỉ tạm thời + Không xác định...
+  total: number;
+}
+
+// --- Thẻ 1 mục 1.6: dòng "Tổng số" (row 123) của sheet "Thống kê tổng hợp", mỗi tháng ---
+export interface EnrollmentTimelinePoint {
+  month: MonthKey;
+  dang_hoc: number; // Tổng SV đang học toàn trường tại tháng đó
+  kha_nang_phuc_hoi: number; // Tuyển mới + Quay lại phát sinh trong tháng đó
 }

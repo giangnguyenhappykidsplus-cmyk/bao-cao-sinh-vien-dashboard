@@ -20,7 +20,7 @@ export function Header({ activeTab, onTabChange, onExport, exporting }: { active
             </div>
             <div>
               <h1 className="text-lg font-bold leading-tight tracking-tight text-white sm:text-xl">
-                BÁO CÁO TÌNH TRẠNG SINH VIÊN NĂM 2026-2027
+                BÁO CÁO TÌNH TRẠNG SINH VIÊN NĂM 2025-2026
               </h1>
               <p className="mt-0.5 text-xs text-slate-400">
                 Dữ liệu phân tích: Tháng 7/2025 — Tháng 6/2026 · K23 · K24 · K25
