@@ -883,7 +883,6 @@ export function aiMajorCrossAnalysis(ctx: MajorAiContext): AiInsight {
   const hienTrang = [
     `Ngành "${ctx.major}": đầu vào ${r ? fmtNum(r.dau_vao) : '-'} SV, đang học ${r ? fmtNum(r.dang_hoc_hien_tai) : '-'} (${r ? fmtPct(r.gan_ket_pct) : '-'} giữ chân).`,
     cmp ? `So sánh hệ: ${higher} có tỷ lệ nhóm nguy cơ ${fmtPct(Math.max(cdRisk, tcRisk))} cao hơn ${lower} (${fmtPct(Math.min(cdRisk, tcRisk))}).` : '',
-    ctx.docPhanI ? `[Báo cáo Khoa]: ${ctx.docPhanI.slice(0, 180)}...` : '',
   ].filter(Boolean).join(' ');
 
   const nguyenNhan = [
