@@ -727,8 +727,22 @@ export function aiRetentionLifetime(
   const capPct = (dangHoc / MAX_CAPACITY) * 100;
   const capStatus = capPct < 60 ? 'còn dư địa tiếp nhận đáng kể' : capPct < 85 ? 'đang khai thác gần mức tối đa' : 'gần đạt ngưỡng công suất, cần kiểm soát tuyển sinh';
 
+  // Ghi chú thời gian theo học từng khóa — dùng để diễn giải tỷ lệ gắn kết đúng ngữ cảnh
+  // (khóa mới tuyển sinh tự nhiên có tỷ lệ cao hơn vì chưa đủ thời gian phát sinh thôi học/bảo lưu;
+  // khóa sắp tốt nghiệp thì số liệu đã ổn định, gần như không còn biến động).
+  const cohortTenure: Record<CohortKey, string> = {
+    K23: 'đã học 2 năm 4 tháng và chuẩn bị tốt nghiệp trong năm nay',
+    K24: 'đang ở giữa lộ trình đào tạo',
+    K25: 'mới nhập học năm thứ nhất',
+  };
+  const cohortOrderIdx: Record<CohortKey, number> = { K23: 0, K24: 1, K25: 2 };
+  let tenureCaveat = '';
+  if (bestCohort && worstCohort && cohortOrderIdx[bestCohort.cohort] > cohortOrderIdx[worstCohort.cohort]) {
+    tenureCaveat = ` Tuy nhiên cần đọc đúng ngữ cảnh thời gian theo học: Khóa ${bestCohort.cohort} ${cohortTenure[bestCohort.cohort]}, nên tỷ lệ gắn kết cao hiện tại là điều tự nhiên (chưa đủ thời gian để phát sinh thôi học/bảo lưu), chưa hẳn phản ánh chất lượng giữ chân vượt trội. Ngược lại, Khóa ${worstCohort.cohort} ${cohortTenure[worstCohort.cohort]} — tỷ lệ sụt giảm mạnh nhất ở khóa này là số liệu đã đi hết hành trình học tập nên gần như không còn biến động, phản ánh đúng thực chất mức hao hụt trọn khóa chứ không phải dấu hiệu xấu đi.`;
+  }
+
   return {
-    hienTrang: `Lũy kế toàn khóa (Đầu vào các khóa.xlsx): ${fmtNum(dangHoc)} sinh viên đang học trên tổng ${fmtNum(quyMoDauKy)} SV từng tuyển (${fmtPct(dangHocPct)}). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Ngành "${bestMajor?.major}" giữ chân tốt nhất (${fmtPct(bestMajor?.gan_ket_pct ?? 0)}), ngành "${worstMajor?.major}" biến mất nhiều nhất (${fmtPct(worstMajor?.gan_ket_pct ?? 0)}).`,
+    hienTrang: `Lũy kế toàn khóa (Đầu vào các khóa.xlsx): ${fmtNum(dangHoc)} sinh viên đang học trên tổng ${fmtNum(quyMoDauKy)} SV từng tuyển (${fmtPct(dangHocPct)}). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Ngành "${bestMajor?.major}" giữ chân tốt nhất (${fmtPct(bestMajor?.gan_ket_pct ?? 0)}), ngành "${worstMajor?.major}" biến mất nhiều nhất (${fmtPct(worstMajor?.gan_ket_pct ?? 0)}).${tenureCaveat}`,
     nguyenNhan: `Chênh lệch giữa các khóa phản ánh đặc thù thời điểm nhập học và quy mô mẫu số lũy kế: K23/K24 đã tích lũy nhiều năm nhập học nên mẫu số "Đầu vào" rất lớn so với số đang học hiện tại; K25 mới tuyển sinh nên còn dao động mạnh theo từng ngành. Ngành có tỷ lệ giữ chân thấp thường do sốc chương trình hoặc ghi danh không thực chất ở tân sinh viên, trong khi các ngành ngôn ngữ thường gắn kết tốt hơn nhờ mô hình cảnh báo sớm hiệu quả.`,
     khuyenNghi: `Quy mô đang học hiện chiếm khoảng ${fmtPct(capPct)} công suất đào tạo tối đa (${fmtNum(MAX_CAPACITY)} SV) — trường ${capStatus}. Ưu tiên giữ chân khóa ${worstCohort?.cohort} bằng chiến dịch vận động quay lại, và can thiệp sớm cho ngành "${worstMajor?.major}" (dưới ngưỡng ${SAFE_RETENTION_THRESHOLD}%) bằng cố vấn học tập chuyên trách.`,
   };
