@@ -241,7 +241,7 @@ function DangHocAnalysis({ dauvaoStatus, enrollmentTimeline, filter }: any) {
       </Card>
 
       {/* 1.7 AI Insights */}
-      <AIInsightBox insight={insight} title="1.7 AI Phân tích: Giữ chân sinh viên" />
+      <AIInsightBox insight={insight} title="1.7 AI Phân tích: Giữ chân sinh viên" showKhuyenNghi={false} />
     </>
   );
 }
