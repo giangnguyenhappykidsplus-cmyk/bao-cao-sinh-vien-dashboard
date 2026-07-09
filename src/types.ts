@@ -321,3 +321,24 @@ export interface NhdnByMajorRow {
   mat_lien_lac: number;
   ti_le_mat_lien_lac: number;
 }
+
+// --- Thẻ 1 (Quy mô & Đang học): nguồn "Đầu vào các khóa.xlsx" (lũy kế, Cột J), tách riêng theo Hệ
+// đào tạo (không gộp Cao đẳng + Trung cấp như Thẻ 2/3) để phục vụ đối soát 1.1-1.5. ---
+export interface DauVaoStatusRow {
+  cohort: CohortKey;
+  system: TrainingSystem;
+  major: Major;
+  dang_hoc: number;
+  thoi_hoc: number;
+  bao_luu: number;
+  nghi_hoc_dai_ngay: number;
+  khac: number; // Đã tốt nghiệp + Chuyển lớp + Đình chỉ tạm thời + Không xác định...
+  total: number;
+}
+
+// --- Thẻ 1 mục 1.6: dòng "Tổng số" (row 123) của sheet "Thống kê tổng hợp", mỗi tháng ---
+export interface EnrollmentTimelinePoint {
+  month: MonthKey;
+  dang_hoc: number; // Tổng SV đang học toàn trường tại tháng đó
+  kha_nang_phuc_hoi: number; // Tuyển mới + Quay lại phát sinh trong tháng đó
+}

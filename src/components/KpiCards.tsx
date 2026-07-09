@@ -51,7 +51,13 @@ function BadgePct({ value, tone }: { value: number; tone: 'good' | 'danger' | 'r
   return <span className={`ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold ${cls}`}><TrendingUp className={`h-3 w-3 ${tone !== 'good' ? 'rotate-180' : ''}`} />{fmtPct(value)}</span>;
 }
 
-export function KpiCards({ kpi, activeDrill, onDrill, onViewStudents }: { kpi: KpiSnapshot; activeDrill: KpiDrillKey | null; onDrill: (key: KpiDrillKey) => void; onViewStudents: (key: KpiDrillKey) => void }) {
+export function KpiCards({ kpi, quyMoDauKy, dangHocHienTai, activeDrill, onDrill, onViewStudents }: {
+  kpi: KpiSnapshot; quyMoDauKy: number; dangHocHienTai: number;
+  activeDrill: KpiDrillKey | null; onDrill: (key: KpiDrillKey) => void; onViewStudents: (key: KpiDrillKey) => void;
+}) {
+  // Thẻ 1 (Quy mô & Đang học) dùng nguồn riêng "Đầu vào các khóa.xlsx" lũy kế — KHÔNG dùng
+  // kpi.tong_sinh_vien_dau_ky / kpi.dang_hoc, để không ảnh hưởng mẫu số Thẻ 3 (Bảo lưu) bên dưới.
+  const dangHocPctC1 = quyMoDauKy > 0 ? (dangHocHienTai / quyMoDauKy) * 100 : 0;
   const num = (v: number, suffix: string) => (
     <span className="text-2xl font-semibold text-white transition-colors group-hover:text-blue-300">{v.toLocaleString('vi-VN')}<span className="ml-1 text-xs font-normal text-slate-500">{suffix}</span></span>
   );
@@ -60,10 +66,10 @@ export function KpiCards({ kpi, activeDrill, onDrill, onViewStudents }: { kpi: K
     <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
       {/* Card 1: Quy mô & Đang học (số dư tại tháng B) */}
       <KpiCard icon={<GraduationCap className="h-4 w-4" />} label="Quy mô & Đang học" tone="good"
-        caption={`Quy mô đầu kỳ: ${kpi.tong_sinh_vien_dau_ky.toLocaleString('vi-VN')} SV`}
+        caption={`Quy mô đầu kỳ: ${quyMoDauKy.toLocaleString('vi-VN')} SV`}
         active={activeDrill === 'dang_hoc'} onClick={() => onDrill('dang_hoc')} onViewStudents={() => onViewStudents('dang_hoc')}>
-        {num(kpi.dang_hoc, 'SV')}
-        <BadgePct value={kpi.dang_hoc_pct} tone="good" />
+        {num(dangHocHienTai, 'SV')}
+        <BadgePct value={dangHocPctC1} tone="good" />
       </KpiCard>
 
       {/* Card 2: Thôi học (cộng dồn phát sinh) */}
