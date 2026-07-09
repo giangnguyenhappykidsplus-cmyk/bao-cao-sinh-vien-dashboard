@@ -2,7 +2,7 @@ import { useMemo, useRef, useState, useEffect } from 'react';
 import type { FilterState, KpiDrillKey, TabKey } from './types';
 import { ALL_MONTHS } from './types';
 import { buildBaselineIntake, buildMonthlyStats, buildStudentRecords, buildDauVaoLifetime, buildDetailCauses, buildDauVaoStatus, buildEnrollmentTimeline } from './data';
-import { computeKpi, aiRetention, computeCohortRetention, computeMajorRetention, queryStudents, quyModauKyLifetime, dangHocLifetime, type AiInsight, type DrillDownQuery } from './calc';
+import { computeKpi, queryStudents, quyModauKyLifetime, dangHocLifetime, type DrillDownQuery } from './calc';
 import { Header } from './components/Header';
 import { FilterBar } from './components/FilterBar';
 import { KpiCards } from './components/KpiCards';
@@ -86,12 +86,10 @@ function App() {
   async function handleExport() {
     setExporting(true);
     try {
-      // Build AI insight for the report (use retention as the default comprehensive view)
-      const cohortRows = computeCohortRetention(stats, baseline, filter);
-      const majorRows = computeMajorRetention(stats, baseline, filter);
-      const insight: AiInsight = aiRetention(kpi, cohortRows, majorRows);
-
-      await exportBghReport(kpi, filter, insight, quyMoDauKyC1, dangHocC1);
+      await exportBghReport({
+        kpi, filter, quyMoDauKy: quyMoDauKyC1, dangHoc: dangHocC1,
+        stats, baseline, students, dauvao: dauvaoLifetime, dauvaoStatus,
+      });
     } catch (e) {
       console.error('PDF export failed:', e);
       alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
@@ -116,7 +114,7 @@ function App() {
                 </button>
               )}
             </div>
-            <KpiCards kpi={kpi} quyMoDauKy={quyMoDauKyC1} dangHocHienTai={dangHocC1} activeDrill={drill} onDrill={handleDrill} onViewStudents={openStudentModal} />
+            <KpiCards kpi={kpi} quyMoDauKy={quyMoDauKyC1} dangHocHienTai={dangHocC1} activeDrill={drill} onDrill={handleDrill} onViewStudents={openStudentModal} onExportReport={handleExport} exporting={exporting} />
           </div>
         )}
 

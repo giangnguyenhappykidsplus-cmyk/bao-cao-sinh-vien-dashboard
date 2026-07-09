@@ -36,7 +36,7 @@ export function Header({ activeTab, onTabChange, onExport, exporting }: { active
               onClick={onExport}
               disabled={exporting}
               className="inline-flex items-center gap-2 rounded-lg bg-gradient-to-r from-accent to-blue-600 px-4 py-2 text-sm font-semibold text-white shadow-glow transition-all hover:from-blue-500 hover:to-blue-600 disabled:opacity-60 disabled:cursor-wait"
-              title="Xuất báo cáo tổng hợp sang PDF định dạng hành chính A4"
+              title="Xuất báo cáo tổng quát sang PDF định dạng hành chính A4"
             >
               {exporting ? (
                 <>
@@ -46,7 +46,7 @@ export function Header({ activeTab, onTabChange, onExport, exporting }: { active
               ) : (
                 <>
                   <FileText className="h-4 w-4" />
-                  Xuất báo cáo BGH
+                  Báo cáo tổng quát
                 </>
               )}
             </button>
