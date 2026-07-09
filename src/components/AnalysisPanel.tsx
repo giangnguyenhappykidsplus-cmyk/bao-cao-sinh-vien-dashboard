@@ -6,16 +6,18 @@ import {
   ComposedChart,
 } from 'recharts';
 import { TrendingDown, BarChart3, Activity, AlertTriangle, ShieldAlert, Users, PieChart as PieIcon, HeartPulse } from 'lucide-react';
-import type { KpiDrillKey, FilterState, MonthlyStat, BaselineIntake, StudentRecord, MonthKey, DauVaoLifetimeRow, DetailCauseRow } from '../types';
+import type { KpiDrillKey, FilterState, MonthlyStat, BaselineIntake, StudentRecord, MonthKey, DauVaoLifetimeRow, DetailCauseRow, DauVaoStatusRow, EnrollmentTimelinePoint } from '../types';
 import { MONTH_LABELS, SAFE_RETENTION_THRESHOLD, fmtPct, fmtNum } from '../calc';
 import {
-  computeCohortRetention, computeMajorRetention, computeSystemRetention, dropoutTrendWithPct,
+  computeSystemRetention, dropoutTrendWithPct,
   causeSummary, causeDetailSummary, nhdnByMajor, riskByMajorFull, riskByCohortFull,
   baoLuuTrend, baoLuuByMajorFull, baoLuuByCohortFull, dropoutByMajorYearFull, dropoutByCohortYearFull,
   lifetimeByCohort, lifetimeByMajor, lifetimeCrossTab,
   lifetimeByCohortBaoLuu, lifetimeByMajorBaoLuu, lifetimeCrossTabBaoLuu,
-  monthlyEnrollmentTrend, statusDonutData, returnTrend, returnByMajor, majorSystemMatrix,
-  aiRetention, aiDropout, aiNhdn, aiRiskGroup, aiBaoLuu,
+  returnTrend, returnByMajor,
+  aiDropout, aiNhdn, aiRiskGroup, aiBaoLuu,
+  quyModauKyLifetime, dangHocLifetime, statusDonutLifetime, bySystemLifetime, byCohortLifetime,
+  byMajorRetentionLifetime, majorSystemMatrixLifetime, enrollmentTimelineLifetime, aiRetentionLifetime,
 } from '../calc';
 import { Card, CardHeader, Badge, EmptyState } from './ui';
 import { AIInsightBox } from './AIInsightBox';
@@ -49,33 +51,39 @@ function heatColor(pct: number, max: number): string {
 }
 
 export function AnalysisPanel({
-  drillKey, stats, baseline, students, dauvao, detailCauses, filter, kpi,
+  drillKey, stats, baseline, students, dauvao, detailCauses, dauvaoStatus, enrollmentTimeline, filter, kpi,
 }: {
   drillKey: KpiDrillKey; stats: MonthlyStat[]; baseline: BaselineIntake[];
-  students: StudentRecord[]; dauvao: DauVaoLifetimeRow[]; detailCauses: DetailCauseRow[]; filter: FilterState; kpi: any;
+  students: StudentRecord[]; dauvao: DauVaoLifetimeRow[]; detailCauses: DetailCauseRow[];
+  dauvaoStatus: DauVaoStatusRow[]; enrollmentTimeline: EnrollmentTimelinePoint[]; filter: FilterState; kpi: any;
 }) {
   const content = useMemo(() => {
     switch (drillKey) {
-      case 'dang_hoc': return <DangHocAnalysis stats={stats} baseline={baseline} filter={filter} kpi={kpi} />;
+      case 'dang_hoc': return <DangHocAnalysis dauvaoStatus={dauvaoStatus} enrollmentTimeline={enrollmentTimeline} filter={filter} />;
       case 'thoi_hoc': return <ThoiHocAnalysis stats={stats} baseline={baseline} students={students} dauvao={dauvao} detailCauses={detailCauses} filter={filter} kpi={kpi} />;
       case 'bao_luu': return <BaoLuuAnalysis stats={stats} baseline={baseline} students={students} dauvao={dauvao} filter={filter} kpi={kpi} />;
       case 'nghi_hoc_dai_ngay': return <NhdnAnalysis stats={stats} students={students} filter={filter} />;
       case 'nhom_nguy_co': return <NguyCoAnalysis stats={stats} baseline={baseline} filter={filter} kpi={kpi} />;
       case 'quay_lai': return <QuayLaiAnalysis stats={stats} filter={filter} />;
     }
-  }, [drillKey, stats, baseline, students, dauvao, detailCauses, filter, kpi]);
+  }, [drillKey, stats, baseline, students, dauvao, detailCauses, dauvaoStatus, enrollmentTimeline, filter, kpi]);
 
   return <div className="space-y-4 animate-slideUp">{content}</div>;
 }
 
 // ==================== CARD 1: QUY MÔ & ĐANG HỌC ====================
-function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
-  const donut = statusDonutData(stats, baseline, filter);
-  const systemRows = computeSystemRetention(stats, baseline, filter);
-  const cohortRows = computeCohortRetention(stats, baseline, filter);
-  const majorRows = computeMajorRetention(stats, baseline, filter);
-  const monthlyTrend = monthlyEnrollmentTrend(stats, filter);
-  const insight = aiRetention(kpi, cohortRows, majorRows);
+// Nguồn dữ liệu 1.1-1.5: "Đầu vào các khóa.xlsx" (Cột J, lũy kế toàn khóa, tách theo Hệ đào tạo).
+// Nguồn dữ liệu 1.6: dòng "Tổng số" (row 123) sheet "Thống kê tổng hợp" trong "Thống kê năm 2025-2026.xlsx".
+// Đây là nguồn RIÊNG cho Thẻ 1, KHÔNG dùng chung với kpi/stats/baseline của các Thẻ khác.
+function DangHocAnalysis({ dauvaoStatus, enrollmentTimeline, filter }: any) {
+  const quyMoDauKy = quyModauKyLifetime(dauvaoStatus, filter);
+  const dangHocHienTai = dangHocLifetime(dauvaoStatus, filter);
+  const donut = statusDonutLifetime(dauvaoStatus, filter);
+  const systemRows = bySystemLifetime(dauvaoStatus, filter);
+  const cohortRows = byCohortLifetime(dauvaoStatus, filter);
+  const majorRows = byMajorRetentionLifetime(dauvaoStatus, filter);
+  const monthlyTrend = enrollmentTimelineLifetime(enrollmentTimeline, filter);
+  const insight = aiRetentionLifetime(quyMoDauKy, dangHocHienTai, cohortRows, majorRows);
 
   const systemData = systemRows.map((r: any) => ({ system: r.system, dau_vao: r.dau_vao, dang_hoc: r.dang_hoc, pct: Math.round(r.gan_ket_pct * 10) / 10 }));
   const cohortData = cohortRows.map((r: any) => ({ cohort: r.cohort, dau_vao: r.dau_vao, dang_hoc: r.dang_hoc_hien_tai, pct: Math.round(r.gan_ket_pct * 10) / 10 }));
@@ -83,18 +91,22 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
   const trendData = monthlyTrend.map((t: any) => ({ month: MONTH_LABELS[t.month as MonthKey], dang_hoc: t.dang_hoc_luy_ke, tuyen_moi: t.tuyen_moi }));
 
   // Bảng đối soát theo Ngành × Hệ (Phần 1.5)
-  const matrixRows = majorSystemMatrix(stats, baseline, filter);
+  const matrixRows = majorSystemMatrixLifetime(dauvaoStatus, filter);
 
   return (
     <>
       {/* 1.1 Donut + 1.2/1.3 system/cohort charts */}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
-          <CardHeader title="1.1 Phân rã trạng thái sinh viên" subtitle="Donut — tâm: tổng đầu kỳ" icon={<PieIcon className="h-4 w-4" />} />
+          <CardHeader title="1.1 Phân rã trạng thái sinh viên" subtitle="Donut — Đầu vào các khóa.xlsx, lũy kế toàn khóa (Cột J)" icon={<PieIcon className="h-4 w-4" />} />
           <div className="px-2 pb-4 pt-3">
-            <ResponsiveContainer width="100%" height={260}>
+            <ResponsiveContainer width="100%" height={280}>
               <PieChart>
-                <Pie data={donut.slices} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={3}>
+                <Pie
+                  data={donut.slices} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={60} outerRadius={95} paddingAngle={3}
+                  label={(entry: any) => `${fmtNum(entry.value)} (${donut.total > 0 ? fmtPct((entry.value / donut.total) * 100, 1) : '0%'})`}
+                  labelLine={{ stroke: '#64748b', strokeWidth: 1 }}
+                >
                   {donut.slices.map((s: any, i: number) => <Cell key={i} fill={s.color} />)}
                 </Pie>
                 <Tooltip content={<ChartTooltip />} />
@@ -103,13 +115,13 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
             </ResponsiveContainer>
             <div className="mt-1 text-center">
               <div className="text-2xl font-bold text-white">{fmtNum(donut.total)}</div>
-              <div className="text-xs text-slate-500">Tổng SV đầu kỳ</div>
+              <div className="text-xs text-slate-500">Tổng SV đầu kỳ (Đầu vào các khóa.xlsx, lũy kế)</div>
             </div>
           </div>
         </Card>
 
         <Card>
-          <CardHeader title="1.2 Theo Hệ đào tạo" subtitle="Cột kép: tuyển vào vs đang học" icon={<BarChart3 className="h-4 w-4" />} />
+          <CardHeader title="1.2 Theo Hệ đào tạo" subtitle="Đầu vào các khóa.xlsx · cột kép: tuyển vào vs đang học (lũy kế)" icon={<BarChart3 className="h-4 w-4" />} />
           <div className="px-2 pb-4 pt-3">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={systemData} margin={{ top: 8, right: 8, left: 0, bottom: 20 }}>
@@ -130,7 +142,7 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
         </Card>
 
         <Card>
-          <CardHeader title="1.3 Theo Khóa đào tạo" subtitle="Cột kép: tuyển vào vs đang học" icon={<Users className="h-4 w-4" />} />
+          <CardHeader title="1.3 Theo Khóa đào tạo" subtitle="Đầu vào các khóa.xlsx · K23/K24/K25, gộp Cao đẳng + Trung cấp" icon={<Users className="h-4 w-4" />} />
           <div className="px-2 pb-4 pt-3">
             <ResponsiveContainer width="100%" height={260}>
               <BarChart data={cohortData} margin={{ top: 8, right: 8, left: 0, bottom: 20 }}>
@@ -154,7 +166,7 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
       {/* 1.4 Major retention bar + 1.5 Cross-tab table */}
       <div className="grid gap-4 lg:grid-cols-5">
         <Card className="lg:col-span-3">
-          <CardHeader title="1.4 Tỷ lệ giữ chân theo Ngành (Đầu vào = 100%)" subtitle="Hover xem [hiện tại / đầu vào]" icon={<TrendingDown className="h-4 w-4" />} />
+          <CardHeader title="1.4 Tỷ lệ giữ chân theo Ngành (Đầu vào = 100%)" subtitle="Đầu vào các khóa.xlsx · Hover xem [hiện tại / đầu vào]" icon={<TrendingDown className="h-4 w-4" />} />
           <div className="px-2 pb-4 pt-3">
             <ResponsiveContainer width="100%" height={340}>
               <BarChart data={majorData} margin={{ top: 8, right: 16, left: 0, bottom: 60 }}>
@@ -178,7 +190,7 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
         </Card>
 
         <Card className="lg:col-span-2">
-          <CardHeader title="1.5 Bảng đối soát Ngành × Hệ đào tạo" subtitle="Mỗi ngành tách 2 dòng Cao đẳng + Trung cấp để đối soát giữ chân" icon={<BarChart3 className="h-4 w-4" />} />
+          <CardHeader title="1.5 Bảng đối soát Ngành × Hệ đào tạo" subtitle="Đầu vào các khóa.xlsx · mỗi ngành tách 2 dòng Cao đẳng + Trung cấp để đối soát giữ chân" icon={<BarChart3 className="h-4 w-4" />} />
           <div className="max-h-[340px] overflow-auto p-4">
             <table className="w-full text-xs">
               <thead className="sticky top-0 bg-ink-850">
@@ -212,7 +224,7 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
 
       {/* 1.6 Monthly trend */}
       <Card>
-        <CardHeader title="1.6 Biến động sinh viên theo chuỗi thời gian" subtitle="Cột kép: đang học lũy kế + tuyển mới phát sinh" icon={<Activity className="h-4 w-4" />} />
+        <CardHeader title="1.6 Biến động sinh viên theo chuỗi thời gian" subtitle="Thống kê tổng hợp (dòng Tổng số) · cột 1: Đang học · cột 2: Khả năng phục hồi (Tuyển mới + Quay lại)" icon={<Activity className="h-4 w-4" />} />
         <div className="px-2 pb-4 pt-3">
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={trendData} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
@@ -221,8 +233,8 @@ function DangHocAnalysis({ stats, baseline, filter, kpi }: any) {
               <YAxis tick={axisStyle} />
               <Tooltip content={<ChartTooltip />} />
               <Legend wrapperStyle={{ fontSize: 12 }} />
-              <Bar dataKey="dang_hoc" name="Đang học lũy kế" fill={COLORS.good} radius={[4, 4, 0, 0]} />
-              <Bar dataKey="tuyen_moi" name="Tuyển mới/Phục hồi" fill={COLORS.cyan} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="dang_hoc" name="Đang học" fill={COLORS.good} radius={[4, 4, 0, 0]} />
+              <Bar dataKey="tuyen_moi" name="Khả năng phục hồi" fill={COLORS.cyan} radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

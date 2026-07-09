@@ -33,6 +33,8 @@ import {
   type SystemRetentionRow,
   type TopDropoutRow,
   type TrainingSystem,
+  type DauVaoStatusRow,
+  type EnrollmentTimelinePoint,
 } from './types';
 import { MAX_CAPACITY } from './data';
 
@@ -603,6 +605,132 @@ export function aiRetention(kpi: KpiSnapshot, cohortRows: CohortRetentionRow[], 
     hienTrang: `Toàn trường đang quản lý ${fmtNum(kpi.dang_hoc)} sinh viên đang học, tương đương ${fmtPct(kpi.dang_hoc_pct)} so với đầu kỳ (${fmtNum(kpi.tong_sinh_vien_dau_ky)} SV). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Ngành "${bestMajor?.major}" giữ chân tốt nhất (${fmtPct(bestMajor?.gan_ket_pct ?? 0)}), ngành "${worstMajor?.major}" biến mất nhiều nhất (${fmtPct(worstMajor?.gan_ket_pct ?? 0)}).`,
     nguyenNhan: `Chênh lệch giữa các khóa phản ánh đặc thù thời điểm nhập học và quy mô mẫu số lũy kế: K23/K24 đã tích lũy nhiều năm nhập học nên mẫu số "Đầu vào" rất lớn so với số đang học hiện tại; K25 mới tuyển sinh nên còn dao động mạnh theo từng ngành. Ngành Công nghệ ô tô và Tiếng Trung Quốc biến động/biến mất nhiều nhất do sốc chương trình kỹ thuật và ghi danh không thực chất ở tân sinh viên, trong khi Tiếng Nhật/Tiếng Hàn gắn kết tốt hơn nhờ mô hình cảnh báo sớm hiệu quả.`,
     khuyenNghi: `Quy mô hiện tại chiếm khoảng ${fmtPct(capPct)} công suất đào tạo tối đa (${fmtNum(MAX_CAPACITY)} SV) — trường ${capStatus}. Ưu tiên giữ chân K23 bằng chiến dịch vận động quay lại, và can thiệp sớm cho các ngành dưới ngưỡng ${SAFE_RETENTION_THRESHOLD}% bằng cố vấn học tập chuyên trách.`,
+  };
+}
+
+// ============================================================
+// THẺ 1 — QUY MÔ & ĐANG HỌC: chuẩn hóa lại nguồn dữ liệu 1.1-1.5 theo "Đầu vào các khóa.xlsx"
+// (Cột J, lũy kế, tách riêng theo Hệ đào tạo — KHÔNG gộp như Thẻ 2/3), và 1.6 theo dòng
+// "Tổng số" (row 123) của sheet "Thống kê tổng hợp". Các hàm này KHÔNG được các Thẻ khác dùng,
+// và KHÔNG ghi đè kpi.tong_sinh_vien_dau_ky / kpi.dang_hoc dùng chung toàn hệ thống.
+// ============================================================
+
+function filterDauVaoStatus(rows: DauVaoStatusRow[], f: FilterState): DauVaoStatusRow[] {
+  return rows.filter((r) => {
+    if (f.cohorts.length && !f.cohorts.includes(r.cohort)) return false;
+    if (f.systems.length && !f.systems.includes(r.system)) return false;
+    if (f.majors.length && !f.majors.includes(r.major)) return false;
+    return true;
+  });
+}
+
+export function quyModauKyLifetime(rows: DauVaoStatusRow[], f: FilterState): number {
+  return filterDauVaoStatus(rows, f).reduce((s, r) => s + r.total, 0);
+}
+export function dangHocLifetime(rows: DauVaoStatusRow[], f: FilterState): number {
+  return filterDauVaoStatus(rows, f).reduce((s, r) => s + r.dang_hoc, 0);
+}
+
+// 1.1 Donut 5 nhóm: Đang học / Thôi học / Bảo lưu / Nghỉ học dài ngày / Khác
+export function statusDonutLifetime(rows: DauVaoStatusRow[], f: FilterState) {
+  const filtered = filterDauVaoStatus(rows, f);
+  const sum = (k: 'dang_hoc' | 'thoi_hoc' | 'bao_luu' | 'nghi_hoc_dai_ngay' | 'khac' | 'total') =>
+    filtered.reduce((s, r) => s + r[k], 0);
+  return {
+    total: sum('total'),
+    slices: [
+      { name: 'Đang học', value: sum('dang_hoc'), color: '#10b981' },
+      { name: 'Thôi học', value: sum('thoi_hoc'), color: '#ef4444' },
+      { name: 'Bảo lưu', value: sum('bao_luu'), color: '#8b5cf6' },
+      { name: 'Nghỉ học dài ngày', value: sum('nghi_hoc_dai_ngay'), color: '#f59e0b' },
+      { name: 'Khác', value: sum('khac'), color: '#64748b' },
+    ],
+  };
+}
+
+// 1.2 Theo Hệ đào tạo
+export function bySystemLifetime(rows: DauVaoStatusRow[], f: FilterState): SystemRetentionRow[] {
+  const filtered = filterDauVaoStatus(rows, f);
+  const systems: TrainingSystem[] = f.systems.length ? f.systems : ['Cao đẳng', 'Trung cấp'];
+  return systems.map((system) => {
+    const rs = filtered.filter((r) => r.system === system);
+    const dauVao = rs.reduce((s, r) => s + r.total, 0);
+    const dangHoc = rs.reduce((s, r) => s + r.dang_hoc, 0);
+    return { system, dau_vao: dauVao, dang_hoc: dangHoc, gan_ket_pct: dauVao > 0 ? (dangHoc / dauVao) * 100 : 0 };
+  });
+}
+
+// 1.3 Theo Khóa đào tạo (gộp cả 2 hệ của khóa đó)
+export function byCohortLifetime(rows: DauVaoStatusRow[], f: FilterState): CohortRetentionRow[] {
+  const filtered = filterDauVaoStatus(rows, f);
+  const cohorts: CohortKey[] = f.cohorts.length ? f.cohorts : ['K23', 'K24', 'K25'];
+  return cohorts.map((cohort) => {
+    const rs = filtered.filter((r) => r.cohort === cohort);
+    const dauVao = rs.reduce((s, r) => s + r.total, 0);
+    const dangHoc = rs.reduce((s, r) => s + r.dang_hoc, 0);
+    const g = dauVao > 0 ? (dangHoc / dauVao) * 100 : 0;
+    return { cohort, dau_vao: dauVao, dang_hoc_hien_tai: dangHoc, gan_ket_pct: g, bien_mat_pct: 100 - g };
+  });
+}
+
+// 1.4 Tỷ lệ giữ chân theo Ngành (gộp cả 2 hệ, tất cả các khóa)
+export function byMajorRetentionLifetime(rows: DauVaoStatusRow[], f: FilterState): MajorRetentionRow[] {
+  const filtered = filterDauVaoStatus(rows, f);
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(rows);
+  return majors.map((major) => {
+    const rs = filtered.filter((r) => r.major === major);
+    const dauVao = rs.reduce((s, r) => s + r.total, 0);
+    const dangHoc = rs.reduce((s, r) => s + r.dang_hoc, 0);
+    const g = dauVao > 0 ? (dangHoc / dauVao) * 100 : 0;
+    return { major, dau_vao: dauVao, dang_hoc_hien_tai: dangHoc, gan_ket_pct: g, bien_mat_pct: 100 - g };
+  });
+}
+
+// 1.5 Bảng đối soát Ngành × Hệ đào tạo
+export function majorSystemMatrixLifetime(rows: DauVaoStatusRow[], f: FilterState): MajorSystemMatrixRow[] {
+  const filtered = filterDauVaoStatus(rows, f);
+  const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(rows);
+  const systems: TrainingSystem[] = f.systems.length ? f.systems : ['Cao đẳng', 'Trung cấp'];
+  const result: MajorSystemMatrixRow[] = [];
+  for (const m of majors) {
+    for (const sys of systems) {
+      const rs = filtered.filter((r) => r.major === m && r.system === sys);
+      const dv = rs.reduce((s, r) => s + r.total, 0);
+      const dh = rs.reduce((s, r) => s + r.dang_hoc, 0);
+      result.push({ major: m, system: sys, dau_vao: dv, dang_hoc: dh, chenh_lech: dh - dv, gan_ket_pct: dv > 0 ? (dh / dv) * 100 : 0 });
+    }
+  }
+  return result;
+}
+
+// 1.6 Biến động sinh viên theo chuỗi thời gian — dòng "Tổng số" (row 123) sheet "Thống kê tổng hợp"
+export function enrollmentTimelineLifetime(timeline: EnrollmentTimelinePoint[], f: FilterState): MonthlyTrendPoint[] {
+  const months = sortMonths(f.months.length ? f.months : (timeline.map((t) => t.month)));
+  return months.map((month) => {
+    const row = timeline.find((t) => t.month === month);
+    return { month, dang_hoc_luy_ke: row?.dang_hoc ?? 0, tuyen_moi: row?.kha_nang_phuc_hoi ?? 0 };
+  });
+}
+
+// 1.7 AI Phân tích giữ chân sinh viên — dùng nguồn lũy kế đồng bộ ở trên (thay cho aiRetention cũ)
+export function aiRetentionLifetime(
+  quyMoDauKy: number,
+  dangHoc: number,
+  cohortRows: CohortRetentionRow[],
+  majorRows: MajorRetentionRow[],
+): AiInsight {
+  const dangHocPct = quyMoDauKy > 0 ? (dangHoc / quyMoDauKy) * 100 : 0;
+  const bestCohort = [...cohortRows].sort((a, b) => b.gan_ket_pct - a.gan_ket_pct)[0];
+  const worstCohort = [...cohortRows].sort((a, b) => a.gan_ket_pct - b.gan_ket_pct)[0];
+  const bestMajor = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => b.gan_ket_pct - a.gan_ket_pct)[0];
+  const worstMajor = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => a.gan_ket_pct - b.gan_ket_pct)[0];
+  const capPct = (dangHoc / MAX_CAPACITY) * 100;
+  const capStatus = capPct < 60 ? 'còn dư địa tiếp nhận đáng kể' : capPct < 85 ? 'đang khai thác gần mức tối đa' : 'gần đạt ngưỡng công suất, cần kiểm soát tuyển sinh';
+
+  return {
+    hienTrang: `Lũy kế toàn khóa (Đầu vào các khóa.xlsx): ${fmtNum(dangHoc)} sinh viên đang học trên tổng ${fmtNum(quyMoDauKy)} SV từng tuyển (${fmtPct(dangHocPct)}). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Ngành "${bestMajor?.major}" giữ chân tốt nhất (${fmtPct(bestMajor?.gan_ket_pct ?? 0)}), ngành "${worstMajor?.major}" biến mất nhiều nhất (${fmtPct(worstMajor?.gan_ket_pct ?? 0)}).`,
+    nguyenNhan: `Chênh lệch giữa các khóa phản ánh đặc thù thời điểm nhập học và quy mô mẫu số lũy kế: K23/K24 đã tích lũy nhiều năm nhập học nên mẫu số "Đầu vào" rất lớn so với số đang học hiện tại; K25 mới tuyển sinh nên còn dao động mạnh theo từng ngành. Ngành có tỷ lệ giữ chân thấp thường do sốc chương trình hoặc ghi danh không thực chất ở tân sinh viên, trong khi các ngành ngôn ngữ thường gắn kết tốt hơn nhờ mô hình cảnh báo sớm hiệu quả.`,
+    khuyenNghi: `Quy mô đang học hiện chiếm khoảng ${fmtPct(capPct)} công suất đào tạo tối đa (${fmtNum(MAX_CAPACITY)} SV) — trường ${capStatus}. Ưu tiên giữ chân khóa ${worstCohort?.cohort} bằng chiến dịch vận động quay lại, và can thiệp sớm cho ngành "${worstMajor?.major}" (dưới ngưỡng ${SAFE_RETENTION_THRESHOLD}%) bằng cố vấn học tập chuyên trách.`,
   };
 }
 
