@@ -4,9 +4,9 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
 import { FileBarChart, FlaskConical, Lightbulb, ChevronRight, GitCompare } from 'lucide-react';
-import type { FilterState, MonthlyStat, BaselineIntake, StudentRecord, Major } from '../types';
+import type { FilterState, MonthlyStat, BaselineIntake, StudentRecord, Major, DauVaoStatusRow } from '../types';
 import { MONTH_LABELS, fmtPct, fmtNum } from '../calc';
-import { computeMajorRetention, nhdnByMajor, systemMajorCompare, aiMajorCrossAnalysis, type MajorAiContext } from '../calc';
+import { nhdnByMajor, systemMajorCompare, aiMajorCrossAnalysis, byMajorRetentionLifetime, type MajorAiContext } from '../calc';
 import { QUALITATIVE_TEMPLATES, DOC_REPORTS } from '../data';
 import { AIInsightBox } from './AIInsightBox';
 import { Card, CardHeader } from './ui';
@@ -32,11 +32,13 @@ const MAJOR_LIST: Major[] = [
   'Tiếng Trung Quốc (TTQ)', 'Phiên dịch tiếng Anh thương mại (VLB)', 'Tiếng Hàn Quốc (VLK)', 'Tiếng Nhật (TN)',
 ];
 
-export function Tab2MajorDetail({ stats, baseline, students, filter }: { stats: MonthlyStat[]; baseline: BaselineIntake[]; students: StudentRecord[]; filter: FilterState }) {
+export function Tab2MajorDetail({ stats, baseline, students, filter, dauvaoStatus }: { stats: MonthlyStat[]; baseline: BaselineIntake[]; students: StudentRecord[]; filter: FilterState; dauvaoStatus: DauVaoStatusRow[] }) {
   const [selected, setSelected] = useState<Major>(filter.majors[0] ?? MAJOR_LIST[0]);
   const tpl = QUALITATIVE_TEMPLATES[selected];
 
-  const majorRetention = useMemo(() => computeMajorRetention(stats, baseline, { ...filter, majors: [selected] }), [stats, baseline, filter, selected]);
+  // Đầu vào & Đang học: nguồn "Đầu vào các khóa.xlsx" lũy kế (đồng nhất với Thẻ 1), KHÔNG dùng
+  // computeMajorRetention(stats, baseline) nữa vì baseline là bản trích xuất cũ + stats chỉ là năm học hiện tại.
+  const majorRetention = useMemo(() => byMajorRetentionLifetime(dauvaoStatus, { ...filter, majors: [selected] }), [dauvaoStatus, filter, selected]);
   const r = majorRetention[0];
   const monthlyForMajor = useMemo(() => {
     const rows = stats.filter((s) => s.major === selected && filter.months.includes(s.month) && (!filter.cohorts.length || filter.cohorts.includes(s.cohort)));
@@ -215,7 +217,7 @@ export function Tab2MajorDetail({ stats, baseline, students, filter }: { stats: 
 
       {/* AI Cross-Analysis — đối soát định lượng + định tính (Word report) */}
       {(() => {
-        const allMajorRows = computeMajorRetention(stats, baseline, filter);
+        const allMajorRows = byMajorRetentionLifetime(dauvaoStatus, filter);
         const retRow = allMajorRows.find((r) => r.major === selected) ?? null;
         const cmpRows = systemMajorCompare(stats, baseline, { ...filter, majors: [selected] });
         const doc = DOC_REPORTS.find((d) => d.tag === selected.split(' ').map(w => w[0]).join('').slice(0, 4).toUpperCase())
