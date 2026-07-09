@@ -66,11 +66,10 @@ export function Tab2MajorDetail({ stats, baseline, students, filter, dauvaoStatu
       <Card>
         <CardHeader title={`Phần I — Phân tích định lượng: ${selected}`} subtitle="Đầu vào tuyển sinh vs Đang học · xu hướng thôi học theo tháng · danh sách NHDN" icon={<FileBarChart className="h-4 w-4" />} />
         <div className="p-5">
-          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-3">
             <Stat label="Đầu vào" value={r ? fmtNum(r.dau_vao) : '-'} tone="accent" />
             <Stat label="Đang học" value={r ? fmtNum(r.dang_hoc_hien_tai) : '-'} tone="good" />
             <Stat label="Giữ chân" value={r ? fmtPct(r.gan_ket_pct) : '-'} tone={r && r.gan_ket_pct < 85 ? 'danger' : 'good'} />
-            <Stat label="Biến mất" value={r ? fmtPct(r.bien_mat_pct) : '-'} tone="danger" />
           </div>
 
           <div className="grid gap-4 lg:grid-cols-2">

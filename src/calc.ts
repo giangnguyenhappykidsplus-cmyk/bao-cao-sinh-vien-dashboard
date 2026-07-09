@@ -192,13 +192,15 @@ export function returnTrend(stats: MonthlyStat[], f: FilterState): ReturnTrendPo
 }
 
 // --- NHDN by major (cumulative at last month) ---
+// Nghỉ học dài ngày luôn là số dư tại tháng gần nhất (T6/2026, Thống kê năm 2025-2026.xlsx) — KHÔNG cộng dồn
+// và KHÔNG phụ thuộc bộ lọc Giai đoạn, vì đây là chỉ số "hiện trạng" chứ không phải phát sinh trong kỳ.
+const NHDN_SNAPSHOT_MONTH: MonthKey = '2026-06';
 export function nhdnByMajor(stats: MonthlyStat[], students: StudentRecord[], f: FilterState, limit = 8): NhdnByMajorRow[] {
-  const filtered = filterStats(stats, f);
-  const lastMonth = latestMonth(f.months);
-  const filteredStudents = filterStudents(students, f);
+  const filtered = stats.filter((s) => matchesStat(s, f) && s.month === NHDN_SNAPSHOT_MONTH);
+  const filteredStudents = students.filter((s) => matchesStudent(s, f) && s.thang_bien_dong === NHDN_SNAPSHOT_MONTH);
   const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(stats);
   return majors.map((m) => {
-    const nghi = filtered.filter((s) => s.major === m && s.month === lastMonth).reduce((sum, x) => sum + x.nghi_hoc_dai_ngay, 0);
+    const nghi = filtered.filter((s) => s.major === m).reduce((sum, x) => sum + x.nghi_hoc_dai_ngay, 0);
     const matLienLac = filteredStudents.filter((s) => s.nganh === m && s.loai_trang_thai === 'nghi_hoc_dai_ngay' && s.mat_lien_lac).length;
     return { major: m, nghi_hoc_dai_ngay: nghi, mat_lien_lac: matLienLac, ti_le_mat_lien_lac: nghi > 0 ? (matLienLac / nghi) * 100 : 0 };
   }).filter((r) => r.nghi_hoc_dai_ngay > 0).sort((a, b) => b.nghi_hoc_dai_ngay - a.nghi_hoc_dai_ngay).slice(0, limit);
