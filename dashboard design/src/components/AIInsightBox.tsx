@@ -60,7 +60,7 @@ function Section({ icon, title, text, tone, delay, typing }: {
   );
 }
 
-export function AIInsightBox({ insight, title, typing = true }: { insight: AiInsight; title: string; typing?: boolean }) {
+export function AIInsightBox({ insight, title, typing = true, showKhuyenNghi = true }: { insight: AiInsight; title: string; typing?: boolean; showKhuyenNghi?: boolean }) {
   return (
     <div className="relative overflow-hidden rounded-2xl border border-ai-600/50 bg-gradient-to-br from-ai-900/90 via-ai-800/70 to-ink-850/80 p-5 shadow-ai animate-slideUp">
       {/* Ambient glow */}
@@ -84,7 +84,9 @@ export function AIInsightBox({ insight, title, typing = true }: { insight: AiIns
         <div className="space-y-3">
           <Section icon={<Activity className="h-3.5 w-3.5" />} title="Hiện trạng nổi bật (Điểm nóng dữ liệu)" text={insight.hienTrang} tone="red" delay={150} typing={typing} />
           <Section icon={<HeartPulse className="h-3.5 w-3.5" />} title="Nguyên nhân gốc rễ (Định tính từ dữ liệu ghi chú)" text={insight.nguyenNhan} tone="amber" delay={900} typing={typing} />
-          <Section icon={<Target className="h-3.5 w-3.5" />} title="Khuyến nghị hành động (Giải pháp giữ chân khẩn cấp)" text={insight.khuyenNghi} tone="emerald" delay={1700} typing={typing} />
+          {showKhuyenNghi && (
+            <Section icon={<Target className="h-3.5 w-3.5" />} title="Khuyến nghị hành động (Giải pháp giữ chân khẩn cấp)" text={insight.khuyenNghi} tone="emerald" delay={1700} typing={typing} />
+          )}
         </div>
       </div>
     </div>

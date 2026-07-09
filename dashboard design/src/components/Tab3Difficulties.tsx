@@ -16,7 +16,6 @@ export function Tab3Difficulties() {
                 <div className="flex-1">
                   <p className="text-sm font-medium leading-relaxed text-slate-100">{d.kho_khan}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <Badge tone="accent">Phạm vi: {d.pham_vi}</Badge>
                     <Badge tone="neutral">Chủ trì: {d.bo_phan_chu_tri}</Badge>
                   </div>
                   <div className="mt-2.5 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2">

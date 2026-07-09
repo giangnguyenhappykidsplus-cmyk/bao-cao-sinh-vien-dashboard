@@ -127,7 +127,6 @@ export async function exportBghReport(
   <h3>PHẦN 3: KẾT LUẬN ĐỊNH TÍNH CỦA TRỢ LÝ AI</h3>
   <div class="insight red"><div class="label">Hiện trạng nổi bật (Điểm nóng dữ liệu):</div><div>${esc(insights.hienTrang)}</div></div>
   <div class="insight amber"><div class="label">Nguyên nhân gốc rễ (Định tính từ dữ liệu ghi chú):</div><div>${esc(insights.nguyenNhan)}</div></div>
-  <div class="insight green"><div class="label">Khuyến nghị hành động (Giải pháp giữ chân khẩn cấp):</div><div>${esc(insights.khuyenNghi)}</div></div>
 
   <div class="sign">
     <div><div class="role">ĐẠI DIỆN PHÒNG ĐÀO TẠO</div><div class="hint">(Ký, ghi rõ họ tên)</div></div>

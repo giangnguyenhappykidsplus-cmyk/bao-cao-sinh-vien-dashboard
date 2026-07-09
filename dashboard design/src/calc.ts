@@ -192,13 +192,15 @@ export function returnTrend(stats: MonthlyStat[], f: FilterState): ReturnTrendPo
 }
 
 // --- NHDN by major (cumulative at last month) ---
+// Nghỉ học dài ngày luôn là số dư tại tháng gần nhất (T6/2026, Thống kê năm 2025-2026.xlsx) — KHÔNG cộng dồn
+// và KHÔNG phụ thuộc bộ lọc Giai đoạn, vì đây là chỉ số "hiện trạng" chứ không phải phát sinh trong kỳ.
+const NHDN_SNAPSHOT_MONTH: MonthKey = '2026-06';
 export function nhdnByMajor(stats: MonthlyStat[], students: StudentRecord[], f: FilterState, limit = 8): NhdnByMajorRow[] {
-  const filtered = filterStats(stats, f);
-  const lastMonth = latestMonth(f.months);
-  const filteredStudents = filterStudents(students, f);
+  const filtered = stats.filter((s) => matchesStat(s, f) && s.month === NHDN_SNAPSHOT_MONTH);
+  const filteredStudents = students.filter((s) => matchesStudent(s, f) && s.thang_bien_dong === NHDN_SNAPSHOT_MONTH);
   const majors: Major[] = f.majors.length ? f.majors : uniqueMajors(stats);
   return majors.map((m) => {
-    const nghi = filtered.filter((s) => s.major === m && s.month === lastMonth).reduce((sum, x) => sum + x.nghi_hoc_dai_ngay, 0);
+    const nghi = filtered.filter((s) => s.major === m).reduce((sum, x) => sum + x.nghi_hoc_dai_ngay, 0);
     const matLienLac = filteredStudents.filter((s) => s.nganh === m && s.loai_trang_thai === 'nghi_hoc_dai_ngay' && s.mat_lien_lac).length;
     return { major: m, nghi_hoc_dai_ngay: nghi, mat_lien_lac: matLienLac, ti_le_mat_lien_lac: nghi > 0 ? (matLienLac / nghi) * 100 : 0 };
   }).filter((r) => r.nghi_hoc_dai_ngay > 0).sort((a, b) => b.nghi_hoc_dai_ngay - a.nghi_hoc_dai_ngay).slice(0, limit);
@@ -596,13 +598,16 @@ const CAUSE_LABEL: Record<CauseGroup, string> = {
 export function aiRetention(kpi: KpiSnapshot, cohortRows: CohortRetentionRow[], majorRows: MajorRetentionRow[]): AiInsight {
   const bestCohort = [...cohortRows].sort((a, b) => b.gan_ket_pct - a.gan_ket_pct)[0];
   const worstCohort = [...cohortRows].sort((a, b) => a.gan_ket_pct - b.gan_ket_pct)[0];
-  const bestMajor = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => b.gan_ket_pct - a.gan_ket_pct)[0];
-  const worstMajor = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => a.gan_ket_pct - b.gan_ket_pct)[0];
+  const majorsByBest = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => b.gan_ket_pct - a.gan_ket_pct);
+  const top3Majors = majorsByBest.slice(0, 3);
+  const worst4Majors = majorsByBest.slice(-4).reverse();
+  const top3MajorsStr = top3Majors.map((m) => `"${m.major}" (${fmtPct(m.gan_ket_pct)})`).join(', ');
+  const worst4MajorsStr = worst4Majors.map((m) => `"${m.major}" (${fmtPct(m.gan_ket_pct)})`).join(', ');
   const capPct = (kpi.dang_hoc / MAX_CAPACITY) * 100;
   const capStatus = capPct < 60 ? 'còn dư địa tiếp nhận đáng kể' : capPct < 85 ? 'đang khai thá gần mức tối đa' : 'gần đạt ngưỡng công suất, cần kiểm soát tuyển sinh';
 
   return {
-    hienTrang: `Toàn trường đang quản lý ${fmtNum(kpi.dang_hoc)} sinh viên đang học, tương đương ${fmtPct(kpi.dang_hoc_pct)} so với đầu kỳ (${fmtNum(kpi.tong_sinh_vien_dau_ky)} SV). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Ngành "${bestMajor?.major}" giữ chân tốt nhất (${fmtPct(bestMajor?.gan_ket_pct ?? 0)}), ngành "${worstMajor?.major}" biến mất nhiều nhất (${fmtPct(worstMajor?.gan_ket_pct ?? 0)}).`,
+    hienTrang: `Toàn trường đang quản lý ${fmtNum(kpi.dang_hoc)} sinh viên đang học, tương đương ${fmtPct(kpi.dang_hoc_pct)} so với đầu kỳ (${fmtNum(kpi.tong_sinh_vien_dau_ky)} SV). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Nhóm ngành giữ chân tốt nhất: ${top3MajorsStr}. Nhóm ngành giữ chân chưa tốt: ${worst4MajorsStr}.`,
     nguyenNhan: `Chênh lệch giữa các khóa phản ánh đặc thù thời điểm nhập học và quy mô mẫu số lũy kế: K23/K24 đã tích lũy nhiều năm nhập học nên mẫu số "Đầu vào" rất lớn so với số đang học hiện tại; K25 mới tuyển sinh nên còn dao động mạnh theo từng ngành. Ngành Công nghệ ô tô và Tiếng Trung Quốc biến động/biến mất nhiều nhất do sốc chương trình kỹ thuật và ghi danh không thực chất ở tân sinh viên, trong khi Tiếng Nhật/Tiếng Hàn gắn kết tốt hơn nhờ mô hình cảnh báo sớm hiệu quả.`,
     khuyenNghi: `Quy mô hiện tại chiếm khoảng ${fmtPct(capPct)} công suất đào tạo tối đa (${fmtNum(MAX_CAPACITY)} SV) — trường ${capStatus}. Ưu tiên giữ chân K23 bằng chiến dịch vận động quay lại, và can thiệp sớm cho các ngành dưới ngưỡng ${SAFE_RETENTION_THRESHOLD}% bằng cố vấn học tập chuyên trách.`,
   };
@@ -722,13 +727,31 @@ export function aiRetentionLifetime(
   const dangHocPct = quyMoDauKy > 0 ? (dangHoc / quyMoDauKy) * 100 : 0;
   const bestCohort = [...cohortRows].sort((a, b) => b.gan_ket_pct - a.gan_ket_pct)[0];
   const worstCohort = [...cohortRows].sort((a, b) => a.gan_ket_pct - b.gan_ket_pct)[0];
-  const bestMajor = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => b.gan_ket_pct - a.gan_ket_pct)[0];
-  const worstMajor = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => a.gan_ket_pct - b.gan_ket_pct)[0];
+  const majorsByBest = [...majorRows].filter((m) => m.dau_vao > 0).sort((a, b) => b.gan_ket_pct - a.gan_ket_pct);
+  const top3Majors = majorsByBest.slice(0, 3);
+  const worst4Majors = majorsByBest.slice(-4).reverse();
+  const worstMajor = worst4Majors[0];
+  const top3MajorsStr = top3Majors.map((m) => `"${m.major}" (${fmtPct(m.gan_ket_pct)})`).join(', ');
+  const worst4MajorsStr = worst4Majors.map((m) => `"${m.major}" (${fmtPct(m.gan_ket_pct)})`).join(', ');
   const capPct = (dangHoc / MAX_CAPACITY) * 100;
   const capStatus = capPct < 60 ? 'còn dư địa tiếp nhận đáng kể' : capPct < 85 ? 'đang khai thác gần mức tối đa' : 'gần đạt ngưỡng công suất, cần kiểm soát tuyển sinh';
 
+  // Ghi chú thời gian theo học từng khóa — dùng để diễn giải tỷ lệ gắn kết đúng ngữ cảnh
+  // (khóa mới tuyển sinh tự nhiên có tỷ lệ cao hơn vì chưa đủ thời gian phát sinh thôi học/bảo lưu;
+  // khóa sắp tốt nghiệp thì số liệu đã ổn định, gần như không còn biến động).
+  const cohortTenure: Record<CohortKey, string> = {
+    K23: 'đã học 2 năm 4 tháng và chuẩn bị tốt nghiệp trong năm nay',
+    K24: 'đang ở giữa lộ trình đào tạo',
+    K25: 'mới nhập học năm thứ nhất',
+  };
+  const cohortOrderIdx: Record<CohortKey, number> = { K23: 0, K24: 1, K25: 2 };
+  let tenureCaveat = '';
+  if (bestCohort && worstCohort && cohortOrderIdx[bestCohort.cohort] > cohortOrderIdx[worstCohort.cohort]) {
+    tenureCaveat = ` Tuy nhiên cần đọc đúng ngữ cảnh thời gian theo học: Khóa ${bestCohort.cohort} ${cohortTenure[bestCohort.cohort]}, nên tỷ lệ gắn kết cao hiện tại là điều tự nhiên (chưa đủ thời gian để phát sinh thôi học/bảo lưu), chưa hẳn phản ánh chất lượng giữ chân vượt trội. Ngược lại, Khóa ${worstCohort.cohort} ${cohortTenure[worstCohort.cohort]} — tỷ lệ sụt giảm mạnh nhất ở khóa này là số liệu đã đi hết hành trình học tập nên gần như không còn biến động, phản ánh đúng thực chất mức hao hụt trọn khóa chứ không phải dấu hiệu xấu đi.`;
+  }
+
   return {
-    hienTrang: `Lũy kế toàn khóa (Đầu vào các khóa.xlsx): ${fmtNum(dangHoc)} sinh viên đang học trên tổng ${fmtNum(quyMoDauKy)} SV từng tuyển (${fmtPct(dangHocPct)}). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Ngành "${bestMajor?.major}" giữ chân tốt nhất (${fmtPct(bestMajor?.gan_ket_pct ?? 0)}), ngành "${worstMajor?.major}" biến mất nhiều nhất (${fmtPct(worstMajor?.gan_ket_pct ?? 0)}).`,
+    hienTrang: `Lũy kế toàn khóa (Đầu vào các khóa.xlsx): ${fmtNum(dangHoc)} sinh viên đang học trên tổng ${fmtNum(quyMoDauKy)} SV từng tuyển (${fmtPct(dangHocPct)}). Khóa ${bestCohort?.cohort} có tỷ lệ gắn kết cao nhất (${fmtPct(bestCohort?.gan_ket_pct ?? 0)}), trong khi ${worstCohort?.cohort} sụt giảm nặng nhất (${fmtPct(worstCohort?.gan_ket_pct ?? 0)}). Nhóm ngành giữ chân tốt nhất: ${top3MajorsStr}. Nhóm ngành giữ chân chưa tốt: ${worst4MajorsStr}.${tenureCaveat}`,
     nguyenNhan: `Chênh lệch giữa các khóa phản ánh đặc thù thời điểm nhập học và quy mô mẫu số lũy kế: K23/K24 đã tích lũy nhiều năm nhập học nên mẫu số "Đầu vào" rất lớn so với số đang học hiện tại; K25 mới tuyển sinh nên còn dao động mạnh theo từng ngành. Ngành có tỷ lệ giữ chân thấp thường do sốc chương trình hoặc ghi danh không thực chất ở tân sinh viên, trong khi các ngành ngôn ngữ thường gắn kết tốt hơn nhờ mô hình cảnh báo sớm hiệu quả.`,
     khuyenNghi: `Quy mô đang học hiện chiếm khoảng ${fmtPct(capPct)} công suất đào tạo tối đa (${fmtNum(MAX_CAPACITY)} SV) — trường ${capStatus}. Ưu tiên giữ chân khóa ${worstCohort?.cohort} bằng chiến dịch vận động quay lại, và can thiệp sớm cho ngành "${worstMajor?.major}" (dưới ngưỡng ${SAFE_RETENTION_THRESHOLD}%) bằng cố vấn học tập chuyên trách.`,
   };
@@ -860,7 +883,6 @@ export function aiMajorCrossAnalysis(ctx: MajorAiContext): AiInsight {
   const hienTrang = [
     `Ngành "${ctx.major}": đầu vào ${r ? fmtNum(r.dau_vao) : '-'} SV, đang học ${r ? fmtNum(r.dang_hoc_hien_tai) : '-'} (${r ? fmtPct(r.gan_ket_pct) : '-'} giữ chân).`,
     cmp ? `So sánh hệ: ${higher} có tỷ lệ nhóm nguy cơ ${fmtPct(Math.max(cdRisk, tcRisk))} cao hơn ${lower} (${fmtPct(Math.min(cdRisk, tcRisk))}).` : '',
-    ctx.docPhanI ? `[Báo cáo Khoa]: ${ctx.docPhanI.slice(0, 180)}...` : '',
   ].filter(Boolean).join(' ');
 
   const nguyenNhan = [

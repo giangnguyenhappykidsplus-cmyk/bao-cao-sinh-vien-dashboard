@@ -13,7 +13,15 @@ export async function exportBghReport(
   kpi: KpiSnapshot,
   filter: FilterState,
   insights: AiInsight,
+  quyMoDauKyC1?: number,
+  dangHocC1?: number,
 ): Promise<void> {
+  // Thẻ 1 (Quy mô & Đang học): nếu có truyền số liệu lũy kế từ "Đầu vào các khóa.xlsx" thì ưu tiên
+  // dùng số đó (khớp với dashboard); nếu không có thì fallback về kpi.dang_hoc như trước.
+  const dangHocDisplay = dangHocC1 ?? kpi.dang_hoc;
+  const dangHocPctDisplay = quyMoDauKyC1 && quyMoDauKyC1 > 0 && dangHocC1 !== undefined
+    ? (dangHocC1 / quyMoDauKyC1) * 100
+    : kpi.dang_hoc_pct;
   const monthRange = filter.months.length === ALL_MONTHS.length
     ? 'Toàn kỳ (T7/2025 - T6/2026)'
     : `${MONTH_LABELS[filter.months[0] as keyof typeof MONTH_LABELS]} - ${MONTH_LABELS[filter.months[filter.months.length - 1] as keyof typeof MONTH_LABELS]}`;
@@ -25,7 +33,7 @@ export async function exportBghReport(
   ].filter(Boolean).join(' &nbsp;·&nbsp; ');
 
   const kpiRows: Array<{ label: string; value: string; pct: string; color: string }> = [
-    { label: 'Quy mô & Đang học', value: `${fmtNum(kpi.dang_hoc)} SV`, pct: fmtPct(kpi.dang_hoc_pct), color: '#10b981' },
+    { label: 'Quy mô & Đang học', value: `${fmtNum(dangHocDisplay)} SV`, pct: fmtPct(dangHocPctDisplay), color: '#10b981' },
     { label: 'Thôi học (cộng dồn)', value: `${fmtNum(kpi.thoi_hoc)} SV`, pct: fmtPct(kpi.thoi_hoc_pct), color: '#ef4444' },
     { label: 'Bảo lưu (cộng dồn)', value: `${fmtNum(kpi.bao_luu)} SV`, pct: fmtPct(kpi.tong_sinh_vien_dau_ky > 0 ? (kpi.bao_luu / kpi.tong_sinh_vien_dau_ky) * 100 : 0), color: '#8b5cf6' },
     { label: 'Nghỉ học dài ngày', value: `${fmtNum(kpi.nghi_hoc_dai_ngay)} SV`, pct: 'lũy kế', color: '#f59e0b' },
@@ -111,7 +119,7 @@ export async function exportBghReport(
       ${kpiRows.map((r) => `<tr class="kpi-row"><td>${esc(r.label)}</td><td class="val" style="color:${r.color}">${esc(r.value)}</td><td class="val" style="color:${r.color};text-align:right">${esc(r.pct)}</td></tr>`).join('')}
     </tbody>
   </table>
-  <div class="baseline">Quy mô đầu kỳ (Baseline tuyển sinh): ${fmtNum(kpi.tong_sinh_vien_dau_ky)} sinh viên</div>
+  <div class="baseline">Quy mô đầu kỳ (Đầu vào các khóa.xlsx, lũy kế): ${fmtNum(quyMoDauKyC1 ?? kpi.tong_sinh_vien_dau_ky)} sinh viên</div>
 
   <h3>PHẦN 2: ĐỒ HỌA TRỰC QUAN</h3>
   ${chartHtml.join('') || '<p>(Mở Tab Tổng quan và nhấp vào một thẻ KPI để hiển thị biểu đồ trước khi xuất báo cáo.)</p>'}
@@ -119,7 +127,6 @@ export async function exportBghReport(
   <h3>PHẦN 3: KẾT LUẬN ĐỊNH TÍNH CỦA TRỢ LÝ AI</h3>
   <div class="insight red"><div class="label">Hiện trạng nổi bật (Điểm nóng dữ liệu):</div><div>${esc(insights.hienTrang)}</div></div>
   <div class="insight amber"><div class="label">Nguyên nhân gốc rễ (Định tính từ dữ liệu ghi chú):</div><div>${esc(insights.nguyenNhan)}</div></div>
-  <div class="insight green"><div class="label">Khuyến nghị hành động (Giải pháp giữ chân khẩn cấp):</div><div>${esc(insights.khuyenNghi)}</div></div>
 
   <div class="sign">
     <div><div class="role">ĐẠI DIỆN PHÒNG ĐÀO TẠO</div><div class="hint">(Ký, ghi rõ họ tên)</div></div>

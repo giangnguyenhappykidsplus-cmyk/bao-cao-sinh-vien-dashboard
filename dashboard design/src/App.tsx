@@ -128,7 +128,7 @@ function App() {
           )
         )}
 
-        {tab === 'chi_tiet_nganh' && <Tab2MajorDetail stats={stats} baseline={baseline} students={students} filter={filter} />}
+        {tab === 'chi_tiet_nganh' && <Tab2MajorDetail stats={stats} baseline={baseline} students={students} filter={filter} dauvaoStatus={dauvaoStatus} />}
         {tab === 'cac_nganh_khai_bao' && <Tab3DocumentRepo isAdmin={isAdmin} />}
         {tab === 'kho_khan_de_xuat' && <Tab3Difficulties />}
       </main>

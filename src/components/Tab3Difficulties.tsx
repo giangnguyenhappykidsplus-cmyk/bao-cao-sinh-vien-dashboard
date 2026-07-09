@@ -16,7 +16,6 @@ export function Tab3Difficulties() {
                 <div className="flex-1">
                   <p className="text-sm font-medium leading-relaxed text-slate-100">{d.kho_khan}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
-                    <Badge tone="accent">Phạm vi: {d.pham_vi}</Badge>
                     <Badge tone="neutral">Chủ trì: {d.bo_phan_chu_tri}</Badge>
                   </div>
                   <div className="mt-2.5 rounded-lg border border-emerald-500/25 bg-emerald-500/5 px-3 py-2">
@@ -31,7 +30,7 @@ export function Tab3Difficulties() {
       </Card>
 
       <Card>
-        <CardHeader title="Đơn thuốc chiến lược — Hành động ưu tiên" subtitle="Khuyến nghị của Trợ lý AI dựa trên toàn bộ dữ liệu biến động" icon={<ShieldAlert className="h-4 w-4" />} />
+        <CardHeader title="Kế hoạch hành động" subtitle="Khuyến nghị của Trợ lý AI dựa trên toàn bộ dữ liệu biến động" icon={<ShieldAlert className="h-4 w-4" />} />
         <div className="overflow-x-auto p-4">
           <table className="w-full text-sm">
             <thead>
