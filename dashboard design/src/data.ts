@@ -97,9 +97,13 @@ export const UNIT_ROLES: Array<{
     title: "II. KHỐI PHÒNG BAN CHỨC NĂNG (CTSV & ĐÀO TẠO)",
     items: [
       { label: "Kiểm soát đầu vào", text: "Rà soát hồ sơ tuyển sinh, yêu cầu cập nhật ngay nếu trống các trường thông tin bắt buộc.", nhan_manh: "yêu cầu cập nhật ngay" },
-      { label: "Tuần định hướng", text: "Tổ chức bài bản, phổ biến rõ ràng quy chế đào tạo, lộ trình học, điều kiện qua môn; số hóa Sổ tay sinh viên lên App.", nhan_manh: "số hóa Sổ tay sinh viên lên App" },
+      { label: "Tuần định hướng", text: "Tổ chức bài bản, phổ biến rõ ràng quy chế đào tạo, lộ trình học, điều kiện qua môn; số hóa Sổ tay sinh viên lên App; đẩy mạnh gắn kết, hướng dẫn dịch vụ bằng chương trình \"Kick Start Viet My Journey\".", nhan_manh: "số hóa Sổ tay sinh viên lên App" },
       { label: "Hệ thống số hóa", text: "Xây dựng báo cáo phân tích tự động; kiểm tra định kỳ công tác quản lý của các ngành và yêu cầu giải trình khi có bất thường.", nhan_manh: "yêu cầu giải trình khi có bất thường" },
-      { label: "Gắn kết & Truyền thông", text: "Đẩy mạnh các hoạt động phong trào gắn kết sinh viên và truyền thông rộng khắp.", nhan_manh: "gắn kết sinh viên" },
+      { label: "Gắn kết & Truyền thông", text: "Đẩy mạnh các hoạt động phong trào gắn kết sinh viên và truyền thông rộng khắp, tiêu biểu:", nhan_manh: "gắn kết sinh viên", subItems: [
+        { text: "Rung chuông vàng: \"Gen Alpha Lions: Change The Game\"." },
+        { text: "Ngày Hội Yến Anh 2027 — chủ đề chương trình: \"Bloom & Boom\"." },
+        { text: "Ngày Trái Đất." },
+      ] },
       { label: "Yêu cầu", text: "Báo cáo 1 tháng một lần về việc hoàn thành nhóm công việc này.", nhan_manh: "Báo cáo 1 tháng một lần" },
     ],
   },
