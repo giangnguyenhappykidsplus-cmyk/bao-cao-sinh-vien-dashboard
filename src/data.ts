@@ -68,8 +68,10 @@ export const STRATEGIC_RECOMMENDATIONS: Array<{
   { stt: 5, nhom: "Cố vấn học tập", hanh_dong: "Đào tạo kỹ năng phát hiện sớm sinh viên nguy cơ cho toàn bộ GVCN, nhân rộng mô hình khối Ngôn ngữ (cảnh báo ngay khi vắng quá 2 buổi, liên hệ gia đình) sang toàn trường.", nhan_manh: "nhân rộng mô hình khối Ngôn ngữ", u_tien: "Trung bình", thoi_han: "Hoàn thành trong 1 học kỳ" },
   { stt: 6, nhom: "Cải tiến chương trình", hanh_dong: "Bổ sung trải nghiệm thực hành xưởng/phần mềm phối hợp doanh nghiệp ngay học kỳ 1 cho khối Công nghệ - Thiết kế; phân nhánh chuyên môn sớm cho Quản trị DN vừa và nhỏ, Digital Marketing.", nhan_manh: ["trải nghiệm thực hành xưởng/phần mềm", "doanh nghiệp"], u_tien: "Trung bình", thoi_han: "Áp dụng từ khóa kế tiếp" },
   { stt: 7, nhom: "Đón tân sinh viên K26", hanh_dong: "Kiểm soát GVCN chăm sóc sinh viên mới K26 ngay từ ngày OD nhập học để tăng cường gắn kết, chia sẻ, định hướng cho sinh viên.", nhan_manh: "Kiểm soát GVCN chăm sóc sinh viên mới K26", u_tien: "Cao", thoi_han: "Từ ngày nhập học" },
-  { stt: 8, nhom: "KPI kỳ vọng", hanh_dong: "Tỉ lệ thôi học trong học kỳ 1 dưới 7% đối với sinh viên K26.", u_tien: "Cao", thoi_han: "Học kỳ 1 K26" },
 ];
+
+// Mục tiêu KPI kỳ vọng — hiển thị như một chỉ tiêu riêng ngay dưới bảng Kế hoạch hành động (không phải một dòng hành động)
+export const STRATEGIC_KPI_TARGET: string = "Tỉ lệ thôi học trong học kỳ 1 dưới 7% đối với sinh viên K26.";
 
 export const UNIT_ROLES: Array<{
   title: string;

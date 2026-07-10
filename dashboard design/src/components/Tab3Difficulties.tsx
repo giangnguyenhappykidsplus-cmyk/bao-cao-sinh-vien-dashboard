@@ -1,6 +1,6 @@
 // Tab3Difficulties — Khó khăn & Đề xuất (whole-school qualitative + strategic)
-import { AlertOctagon, ClipboardList, ShieldAlert, Building2 } from 'lucide-react';
-import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS, UNIT_ROLES } from '../data';
+import { AlertOctagon, ClipboardList, ShieldAlert, Building2, Target } from 'lucide-react';
+import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS, STRATEGIC_KPI_TARGET, UNIT_ROLES } from '../data';
 import { Card, CardHeader, Badge } from './ui';
 
 function escapeRegExp(s: string): string {
@@ -79,6 +79,13 @@ export function Tab3Difficulties() {
               ))}
             </tbody>
           </table>
+          <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+            <Target className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+            <p className="text-sm leading-relaxed text-slate-100">
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300">KPI kỳ vọng — Mục tiêu: </span>
+              <span className="font-semibold">{STRATEGIC_KPI_TARGET}</span>
+            </p>
+          </div>
         </div>
       </Card>
 

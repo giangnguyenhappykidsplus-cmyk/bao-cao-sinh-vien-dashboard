@@ -16,7 +16,7 @@ import {
   nhdnByMajor, aiNhdn,
   riskByMajorFull, aiRiskGroup,
 } from '../calc';
-import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS } from '../data';
+import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS, STRATEGIC_KPI_TARGET } from '../data';
 
 const C = { good: '#10b981', danger: '#ef4444', warn: '#f59e0b', risk: '#f97316', accent: '#3b82f6', violet: '#8b5cf6', grid: '#e2e8f0', axis: '#94a3b8', text: '#334155' };
 
@@ -397,6 +397,7 @@ export async function exportBghReport(p: PdfExportParams): Promise<void> {
       ${STRATEGIC_RECOMMENDATIONS.map((r) => `<tr><td>${r.stt}</td><td>${esc(r.nhom)}</td><td>${escBold(r.hanh_dong, r.nhan_manh)}</td><td style="font-weight:bold;color:${r.u_tien === 'Cao' ? '#b91c1c' : r.u_tien === 'Trung bình' ? '#b45309' : '#555'}">${esc(r.u_tien)}</td><td>${esc(r.thoi_han)}</td></tr>`).join('')}
     </tbody>
   </table>
+  <div class="insight green"><div class="label">KPI kỳ vọng — Mục tiêu</div><div><strong>${esc(STRATEGIC_KPI_TARGET)}</strong></div></div>
 
   <div class="sign">
     <div><div class="role">ĐẠI DIỆN PHÒNG ĐÀO TẠO</div><div class="hint">(Ký, ghi rõ họ tên)</div></div>
