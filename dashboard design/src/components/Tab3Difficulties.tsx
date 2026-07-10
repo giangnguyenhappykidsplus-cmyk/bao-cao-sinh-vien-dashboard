@@ -53,7 +53,20 @@ export function Tab3Difficulties() {
       </Card>
 
       <Card>
-        <CardHeader title="Kế hoạch hành động" subtitle="Khuyến nghị của Trợ lý AI dựa trên toàn bộ dữ liệu biến động" icon={<ShieldAlert className="h-4 w-4" />} />
+        <CardHeader
+          title="Kế hoạch hành động"
+          subtitle="Khuyến nghị của Trợ lý AI dựa trên toàn bộ dữ liệu biến động"
+          icon={<ShieldAlert className="h-4 w-4" />}
+          action={
+            <div className="hidden shrink-0 items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 sm:flex">
+              <Target className="h-3.5 w-3.5 shrink-0 text-emerald-300" />
+              <span className="text-[11px] leading-tight text-slate-100">
+                <span className="font-semibold uppercase tracking-wide text-emerald-300">KPI kỳ vọng: </span>
+                {STRATEGIC_KPI_TARGET}
+              </span>
+            </div>
+          }
+        />
         <div className="overflow-x-auto p-4">
           <table className="w-full text-sm">
             <thead>
@@ -79,13 +92,6 @@ export function Tab3Difficulties() {
               ))}
             </tbody>
           </table>
-          <div className="mt-4 flex items-start gap-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
-            <Target className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
-            <p className="text-sm leading-relaxed text-slate-100">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-emerald-300">KPI kỳ vọng — Mục tiêu: </span>
-              <span className="font-semibold">{STRATEGIC_KPI_TARGET}</span>
-            </p>
-          </div>
         </div>
       </Card>
 

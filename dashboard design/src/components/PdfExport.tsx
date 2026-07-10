@@ -241,6 +241,9 @@ export async function exportBghReport(p: PdfExportParams): Promise<void> {
   .meta { text-align: center; color: #555; font-size: 10pt; margin-top: 5pt; }
   .sep { border: none; border-top: 1px solid #aaa; margin: 11pt 0; }
   h3 { font-size: 13.5pt; color: #1e3a8a; margin: 18pt 0 8pt; page-break-after: avoid; border-bottom: 1.5pt solid #dbe4f0; padding-bottom: 4pt; }
+  .h3-row { display: flex; align-items: center; justify-content: space-between; gap: 10pt; margin: 18pt 0 8pt; padding-bottom: 4pt; border-bottom: 1.5pt solid #dbe4f0; page-break-after: avoid; }
+  .h3-row h3 { margin: 0; padding: 0; border: none; flex: 1; }
+  .kpi-pill { flex-shrink: 0; font-size: 9pt; font-weight: bold; color: #047857; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 999px; padding: 3pt 10pt; white-space: nowrap; }
   h4 { font-size: 11.5pt; color: #1e3a8a; margin: 13pt 0 6pt; page-break-after: avoid; }
   p.body-text { text-align: justify; text-indent: 14pt; margin: 4pt 0; }
   table { width: 100%; border-collapse: collapse; margin: 7pt 0; }
@@ -390,14 +393,16 @@ export async function exportBghReport(p: PdfExportParams): Promise<void> {
       <div class="de-xuat"><strong>Đề xuất:</strong> ${esc(d.de_xuat)}</div>
     </div>`).join('')}
 
-  <h3 class="page-break">PHẦN 6: KẾ HOẠCH HÀNH ĐỘNG</h3>
+  <div class="h3-row page-break">
+    <h3>PHẦN 6: KẾ HOẠCH HÀNH ĐỘNG</h3>
+    <span class="kpi-pill">KPI kỳ vọng: ${esc(STRATEGIC_KPI_TARGET)}</span>
+  </div>
   <table>
     <thead><tr><th>#</th><th>Nhóm hành động</th><th>Hành động cụ thể</th><th>Ưu tiên</th><th>Thời hạn</th></tr></thead>
     <tbody>
       ${STRATEGIC_RECOMMENDATIONS.map((r) => `<tr><td>${r.stt}</td><td>${esc(r.nhom)}</td><td>${escBold(r.hanh_dong, r.nhan_manh)}</td><td style="font-weight:bold;color:${r.u_tien === 'Cao' ? '#b91c1c' : r.u_tien === 'Trung bình' ? '#b45309' : '#555'}">${esc(r.u_tien)}</td><td>${esc(r.thoi_han)}</td></tr>`).join('')}
     </tbody>
   </table>
-  <div class="insight green"><div class="label">KPI kỳ vọng — Mục tiêu</div><div><strong>${esc(STRATEGIC_KPI_TARGET)}</strong></div></div>
 
   <div class="sign">
     <div><div class="role">ĐẠI DIỆN PHÒNG ĐÀO TẠO</div><div class="hint">(Ký, ghi rõ họ tên)</div></div>
