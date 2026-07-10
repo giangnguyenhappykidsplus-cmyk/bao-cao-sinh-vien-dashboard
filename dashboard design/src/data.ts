@@ -71,7 +71,7 @@ export const STRATEGIC_RECOMMENDATIONS: Array<{
 ];
 
 // Mục tiêu KPI kỳ vọng — hiển thị như một chỉ tiêu riêng ngay dưới bảng Kế hoạch hành động (không phải một dòng hành động)
-export const STRATEGIC_KPI_TARGET: string = "Tỉ lệ thôi học trong học kỳ 1 dưới 7% đối với sinh viên K26.";
+export const STRATEGIC_KPI_TARGET: string = "Tỉ lệ thôi học trong học kỳ 1 dưới 7% đối với sinh viên K26 (K24: 6,96%, K25: 13,45%).";
 
 export const UNIT_ROLES: Array<{
   title: string;
