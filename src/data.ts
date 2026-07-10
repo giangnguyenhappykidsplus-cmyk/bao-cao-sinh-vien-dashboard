@@ -64,30 +64,32 @@ export const STRATEGIC_RECOMMENDATIONS: Array<{
 
 export const UNIT_ROLES: Array<{
   title: string;
-  items: Array<{ label: string; text: string; subItems?: string[] }>;
+  items: Array<{ label: string; text: string; nhan_manh?: string; subItems?: Array<{ text: string; nhan_manh?: string }> }>;
 }> = [
   {
     title: "I. KHỐI KHOA / NGÀNH ĐÀO TẠO",
     items: [
-      { label: "Định hướng", text: "Hướng nghiệp, điều hướng chuyên ngành phù hợp trước khi sinh viên học môn chuyên ngành." },
-      { label: "Đầu mối phối hợp", text: "Phân công nhân sự nắm chắc tình hình sinh viên để chủ động đối chiếu dữ liệu cùng phòng CTSV." },
+      { label: "Định hướng", text: "Hướng nghiệp, điều hướng chuyên ngành phù hợp trước khi sinh viên học môn chuyên ngành.", nhan_manh: "điều hướng chuyên ngành phù hợp" },
+      { label: "Đầu mối phối hợp", text: "Phân công nhân sự nắm chắc tình hình sinh viên để chủ động đối chiếu dữ liệu cùng phòng CTSV.", nhan_manh: "chủ động đối chiếu dữ liệu" },
       { label: "Công tác GVCN", text: "", subItems: [
-        "Bám sát sinh viên từ ngày nhập học; nắm bắt tâm tư và định hướng cá nhân.",
-        "Liên hệ phụ huynh xác thực số điện thoại ngay đầu khóa, làm sạch dữ liệu contact trên CMS.",
-        "Báo cáo tháng đúng hạn (CMS khóa ngày 26 định kỳ), đảm bảo tính trung thực, đầy đủ.",
-        "Gọi điện hỗ trợ nhóm Nghỉ học dài ngày tối thiểu 2 tuần/lần, cập nhật chi tiết lịch sử hành động vào ô ghi chú.",
+        { text: "Bám sát sinh viên từ ngày nhập học; nắm bắt tâm tư và định hướng cá nhân.", nhan_manh: "Bám sát sinh viên từ ngày nhập học" },
+        { text: "Liên hệ phụ huynh xác thực số điện thoại ngay đầu khóa, làm sạch dữ liệu contact trên CMS.", nhan_manh: "xác thực số điện thoại ngay đầu khóa" },
+        { text: "Báo cáo tháng đúng hạn (CMS khóa ngày 26 định kỳ), đảm bảo tính trung thực, đầy đủ.", nhan_manh: "Báo cáo tháng đúng hạn" },
+        { text: "Gọi điện hỗ trợ nhóm Nghỉ học dài ngày tối thiểu 2 tuần/lần, cập nhật chi tiết lịch sử hành động vào ô ghi chú.", nhan_manh: "tối thiểu 2 tuần/lần" },
       ] },
-      { label: "Xử lý ca khó", text: "Báo cáo ngay cho phòng CTSV khi có ca phức tạp hoặc tình trạng nghỉ học hàng loạt để kịp thời trình BGH phương án hỗ trợ." },
-      { label: "Giao ban", text: "Đưa nội dung \"Giảm tỷ lệ Drop-out\" làm trọng tâm trong các cuộc họp định kỳ của Khoa và các phòng ban." },
+      { label: "Xử lý ca khó", text: "Báo cáo ngay cho phòng CTSV khi có ca phức tạp hoặc tình trạng nghỉ học hàng loạt để kịp thời trình BGH phương án hỗ trợ.", nhan_manh: "Báo cáo ngay cho phòng CTSV" },
+      { label: "Giao ban", text: "Đưa nội dung \"Giảm tỷ lệ Drop-out\" làm trọng tâm trong các cuộc họp định kỳ của Khoa và các phòng ban.", nhan_manh: "Giảm tỷ lệ Drop-out" },
+      { label: "Yêu cầu", text: "Báo cáo 1 tháng một lần về việc hoàn thành nhóm công việc này.", nhan_manh: "Báo cáo 1 tháng một lần" },
     ],
   },
   {
     title: "II. KHỐI PHÒNG BAN CHỨC NĂNG (CTSV & ĐÀO TẠO)",
     items: [
-      { label: "Kiểm soát đầu vào", text: "Rà soát hồ sơ tuyển sinh, yêu cầu cập nhật ngay nếu trống các trường thông tin bắt buộc." },
-      { label: "Tuần định hướng", text: "Tổ chức bài bản, phổ biến rõ ràng quy chế đào tạo, lộ trình học, điều kiện qua môn; số hóa Sổ tay sinh viên lên App." },
-      { label: "Hệ thống số hóa", text: "Xây dựng báo cáo phân tích tự động; kiểm tra định kỳ công tác quản lý của các ngành và yêu cầu giải trình khi có bất thường." },
-      { label: "Gắn kết & Truyền thông", text: "Đẩy mạnh các hoạt động phong trào gắn kết sinh viên và truyền thông rộng khắp." },
+      { label: "Kiểm soát đầu vào", text: "Rà soát hồ sơ tuyển sinh, yêu cầu cập nhật ngay nếu trống các trường thông tin bắt buộc.", nhan_manh: "yêu cầu cập nhật ngay" },
+      { label: "Tuần định hướng", text: "Tổ chức bài bản, phổ biến rõ ràng quy chế đào tạo, lộ trình học, điều kiện qua môn; số hóa Sổ tay sinh viên lên App.", nhan_manh: "số hóa Sổ tay sinh viên lên App" },
+      { label: "Hệ thống số hóa", text: "Xây dựng báo cáo phân tích tự động; kiểm tra định kỳ công tác quản lý của các ngành và yêu cầu giải trình khi có bất thường.", nhan_manh: "yêu cầu giải trình khi có bất thường" },
+      { label: "Gắn kết & Truyền thông", text: "Đẩy mạnh các hoạt động phong trào gắn kết sinh viên và truyền thông rộng khắp.", nhan_manh: "gắn kết sinh viên" },
+      { label: "Yêu cầu", text: "Báo cáo 1 tháng một lần về việc hoàn thành nhóm công việc này.", nhan_manh: "Báo cáo 1 tháng một lần" },
     ],
   },
 ];

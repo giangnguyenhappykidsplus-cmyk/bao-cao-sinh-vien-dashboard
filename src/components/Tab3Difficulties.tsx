@@ -44,32 +44,6 @@ export function Tab3Difficulties() {
       </Card>
 
       <Card>
-        <CardHeader title="Vai trò của các đơn vị" subtitle="Phân công trách nhiệm phối hợp giữa Khoa/Ngành và các Phòng ban chức năng" icon={<Building2 className="h-4 w-4" />} />
-        <div className="space-y-5 p-5">
-          {UNIT_ROLES.map((section) => (
-            <div key={section.title}>
-              <h4 className="text-xs font-bold uppercase tracking-wide text-accent-soft">{section.title}</h4>
-              <ol className="mt-2 space-y-2">
-                {section.items.map((item, i) => (
-                  <li key={i} className="text-sm leading-relaxed text-slate-200">
-                    <span className="font-semibold text-slate-100">{i + 1}. {item.label}</span>
-                    {item.text && <>: {item.text}</>}
-                    {item.subItems && (
-                      <ul className="mt-1.5 space-y-1 pl-5">
-                        {item.subItems.map((sub, j) => (
-                          <li key={j} className="list-disc text-slate-300">{sub}</li>
-                        ))}
-                      </ul>
-                    )}
-                  </li>
-                ))}
-              </ol>
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
         <CardHeader title="Kế hoạch hành động" subtitle="Khuyến nghị của Trợ lý AI dựa trên toàn bộ dữ liệu biến động" icon={<ShieldAlert className="h-4 w-4" />} />
         <div className="overflow-x-auto p-4">
           <table className="w-full text-sm">
@@ -96,6 +70,46 @@ export function Tab3Difficulties() {
               ))}
             </tbody>
           </table>
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Vai trò của các đơn vị" subtitle="Phân công trách nhiệm phối hợp giữa Khoa/Ngành và các Phòng ban chức năng" icon={<Building2 className="h-4 w-4" />} />
+        <div className="space-y-6 p-5">
+          {UNIT_ROLES.map((section) => (
+            <div key={section.title}>
+              <h4 className="mb-2 text-xs font-bold uppercase tracking-wide text-accent-soft">{section.title}</h4>
+              <div className="overflow-x-auto rounded-lg border border-ink-700/60">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-ink-700/60 bg-ink-800/40 text-left text-xs uppercase tracking-wide text-slate-500">
+                      <th className="w-10 py-2 pl-3 pr-2 font-medium">STT</th>
+                      <th className="w-40 px-3 py-2 font-medium">Đầu mục</th>
+                      <th className="px-3 py-2 font-medium">Nội dung</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {section.items.map((item, i) => (
+                      <tr key={i} className="border-b border-ink-800/60 align-top transition-colors last:border-b-0 hover:bg-ink-800/40">
+                        <td className="py-3 pl-3 pr-2 tabular-nums text-slate-400">{i + 1}</td>
+                        <td className="px-3 py-3 font-semibold text-slate-100">{item.label}</td>
+                        <td className="px-3 py-3 leading-relaxed text-slate-200">
+                          {item.text && <p><HighlightText text={item.text} bold={item.nhan_manh} /></p>}
+                          {item.subItems && (
+                            <ul className="mt-1.5 space-y-1 pl-4">
+                              {item.subItems.map((sub, j) => (
+                                <li key={j} className="list-disc text-slate-300"><HighlightText text={sub.text} bold={sub.nhan_manh} /></li>
+                              ))}
+                            </ul>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          ))}
         </div>
       </Card>
 
