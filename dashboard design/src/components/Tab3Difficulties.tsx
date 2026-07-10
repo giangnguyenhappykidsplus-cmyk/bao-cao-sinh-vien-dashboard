@@ -1,6 +1,6 @@
 // Tab3Difficulties — Khó khăn & Đề xuất (whole-school qualitative + strategic)
-import { AlertOctagon, ClipboardList, ShieldAlert } from 'lucide-react';
-import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS } from '../data';
+import { AlertOctagon, ClipboardList, ShieldAlert, Building2 } from 'lucide-react';
+import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS, UNIT_ROLES } from '../data';
 import { Card, CardHeader, Badge } from './ui';
 
 // Bôi đậm một cụm từ cụ thể trong đoạn văn (nếu có), phần còn lại giữ nguyên
@@ -38,6 +38,32 @@ export function Tab3Difficulties() {
                   </div>
                 </div>
               </div>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      <Card>
+        <CardHeader title="Vai trò của các đơn vị" subtitle="Phân công trách nhiệm phối hợp giữa Khoa/Ngành và các Phòng ban chức năng" icon={<Building2 className="h-4 w-4" />} />
+        <div className="space-y-5 p-5">
+          {UNIT_ROLES.map((section) => (
+            <div key={section.title}>
+              <h4 className="text-xs font-bold uppercase tracking-wide text-accent-soft">{section.title}</h4>
+              <ol className="mt-2 space-y-2">
+                {section.items.map((item, i) => (
+                  <li key={i} className="text-sm leading-relaxed text-slate-200">
+                    <span className="font-semibold text-slate-100">{i + 1}. {item.label}</span>
+                    {item.text && <>: {item.text}</>}
+                    {item.subItems && (
+                      <ul className="mt-1.5 space-y-1 pl-5">
+                        {item.subItems.map((sub, j) => (
+                          <li key={j} className="list-disc text-slate-300">{sub}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </li>
+                ))}
+              </ol>
             </div>
           ))}
         </div>

@@ -62,6 +62,36 @@ export const STRATEGIC_RECOMMENDATIONS: Array<{
   stt: number; nhom: string; hanh_dong: string; u_tien: 'Cao' | 'Trung bình' | 'Thấp'; thoi_han: string;
 }> = [{"stt": 1, "nhom": "Cảnh báo đỏ", "hanh_dong": "Thành lập ban chỉ đạo giữ chân hoạt động định kỳ (1 tháng/lần) sau khi có báo cáo từ phòng CTSV. Các ngành giải trình, đề xuất chiến lược hành động cho từng trường hợp (nếu cần). Riêng ngành Công nghệ ô tô, GVCN/Trưởng ngành/Trưởng khoa cần vào cuộc làm rõ từng trường hợp, đặc biệt là những trường hợp nghỉ học dài ngày quá 6 tháng và không xác định rõ nguyên nhân, và Tiếng Trung Quốc K25 (2 điểm nóng NHDN/Drop cao nhất trường), họp tuần, báo cáo BGH hàng tháng.", "u_tien": "Cao", "thoi_han": "Khởi động trong 2 tuần"}, {"stt": 2, "nhom": "Chuẩn hóa dữ liệu", "hanh_dong": "Bắt buộc nhập \"Lý do\" theo 7 nhóm chuẩn ngay khi phát sinh trạng thái mới; đối soát hàng tháng giữa bảng tổng hợp và dữ liệu chi tiết (sai số ≤ 0,5% theo Quy ước).", "u_tien": "Cao", "thoi_han": "Áp dụng từ kỳ báo cáo tới"}, {"stt": 3, "nhom": "Sàng lọc đầu vào hệ 9+", "hanh_dong": "Xác minh động cơ nhập học qua điện thoại/gặp trực tiếp trong tuần đầu, đặc biệt với hệ 9+7/9+4, để giảm ghi danh không thực chất (hoãn nghĩa vụ quân sự, đã học nơi khác).", "u_tien": "Cao", "thoi_han": "Áp dụng từ khóa tuyển sinh kế tiếp"}, {"stt": 4, "nhom": "Hỗ trợ tài chính", "hanh_dong": "Phối hợp cùng bộ phận Kế toán nghiên cứu về chế độ vay vốn cho học sinh sinh viên, truyền thông rộng rãi. Với những ngành được cấp miễn giảm học phí, thúc giục, hỗ trợ giấy tờ liên tục.", "u_tien": "Cao", "thoi_han": "Triển khai trong học kỳ tới"}, {"stt": 5, "nhom": "Cố vấn học tập", "hanh_dong": "Đào tạo kỹ năng phát hiện sớm sinh viên nguy cơ cho toàn bộ GVCN, nhân rộng mô hình \"vắng quá 2 buổi liên hệ ngay gia đình\" đang hiệu quả ở khối Ngôn ngữ sang toàn trường.", "u_tien": "Trung bình", "thoi_han": "Hoàn thành trong 1 học kỳ"}, {"stt": 6, "nhom": "Cải tiến chương trình", "hanh_dong": "Bổ sung trải nghiệm thực hành xưởng/phần mềm ngay học kỳ 1 cho khối Công nghệ - Thiết kế; phân nhánh chuyên môn sớm cho Quản trị DN vừa và nhỏ, Digital Marketing.", "u_tien": "Trung bình", "thoi_han": "Áp dụng từ khóa kế tiếp"}, {"stt": 7, "nhom": "Đón tân sinh viên K26", "hanh_dong": "Kiểm soát GVCN chăm sóc sinh viên mới K26 ngay từ ngày OD nhập học để tăng cường gắn kết, chia sẻ, định hướng cho sinh viên.", "u_tien": "Cao", "thoi_han": "Từ ngày nhập học"}];
 
+export const UNIT_ROLES: Array<{
+  title: string;
+  items: Array<{ label: string; text: string; subItems?: string[] }>;
+}> = [
+  {
+    title: "I. KHỐI KHOA / NGÀNH ĐÀO TẠO",
+    items: [
+      { label: "Định hướng", text: "Hướng nghiệp, điều hướng chuyên ngành phù hợp trước khi sinh viên học môn chuyên ngành." },
+      { label: "Đầu mối phối hợp", text: "Phân công nhân sự nắm chắc tình hình sinh viên để chủ động đối chiếu dữ liệu cùng phòng CTSV." },
+      { label: "Công tác GVCN", text: "", subItems: [
+        "Bám sát sinh viên từ ngày nhập học; nắm bắt tâm tư và định hướng cá nhân.",
+        "Liên hệ phụ huynh xác thực số điện thoại ngay đầu khóa, làm sạch dữ liệu contact trên CMS.",
+        "Báo cáo tháng đúng hạn (CMS khóa ngày 26 định kỳ), đảm bảo tính trung thực, đầy đủ.",
+        "Gọi điện hỗ trợ nhóm Nghỉ học dài ngày tối thiểu 2 tuần/lần, cập nhật chi tiết lịch sử hành động vào ô ghi chú.",
+      ] },
+      { label: "Xử lý ca khó", text: "Báo cáo ngay cho phòng CTSV khi có ca phức tạp hoặc tình trạng nghỉ học hàng loạt để kịp thời trình BGH phương án hỗ trợ." },
+      { label: "Giao ban", text: "Đưa nội dung \"Giảm tỷ lệ Drop-out\" làm trọng tâm trong các cuộc họp định kỳ của Khoa và các phòng ban." },
+    ],
+  },
+  {
+    title: "II. KHỐI PHÒNG BAN CHỨC NĂNG (CTSV & ĐÀO TẠO)",
+    items: [
+      { label: "Kiểm soát đầu vào", text: "Rà soát hồ sơ tuyển sinh, yêu cầu cập nhật ngay nếu trống các trường thông tin bắt buộc." },
+      { label: "Tuần định hướng", text: "Tổ chức bài bản, phổ biến rõ ràng quy chế đào tạo, lộ trình học, điều kiện qua môn; số hóa Sổ tay sinh viên lên App." },
+      { label: "Hệ thống số hóa", text: "Xây dựng báo cáo phân tích tự động; kiểm tra định kỳ công tác quản lý của các ngành và yêu cầu giải trình khi có bất thường." },
+      { label: "Gắn kết & Truyền thông", text: "Đẩy mạnh các hoạt động phong trào gắn kết sinh viên và truyền thông rộng khắp." },
+    ],
+  },
+];
+
 // Năng lực đào tạo tối đa — ước tính (không có file nguồn riêng, cần Phòng Đào tạo xác nhận lại)
 export const MAX_CAPACITY = 4000;
 
