@@ -24,12 +24,13 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
-// Escape text, but wrap a specific substring in <strong> (used for Khó khăn — nhấn mạnh cụm từ)
-function escBold(s: string, bold?: string): string {
-  if (!bold) return esc(s);
-  const idx = s.indexOf(bold);
-  if (idx === -1) return esc(s);
-  return esc(s.slice(0, idx)) + '<strong>' + esc(bold) + '</strong>' + esc(s.slice(idx + bold.length));
+// Escape text, but wrap one or more specific substrings in <strong> (used for Khó khăn / Kế hoạch hành động — nhấn mạnh cụm từ)
+function escBold(s: string, bold?: string | string[]): string {
+  const phrases = (Array.isArray(bold) ? bold : bold ? [bold] : []).filter(Boolean);
+  if (phrases.length === 0) return esc(s);
+  const escapeRegExp = (x: string) => x.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`(${phrases.map(escapeRegExp).join('|')})`, 'g');
+  return s.split(pattern).map((part) => (phrases.includes(part) ? '<strong>' + esc(part) + '</strong>' : esc(part))).join('');
 }
 
 function truncate(s: string, n: number): string {
@@ -393,7 +394,7 @@ export async function exportBghReport(p: PdfExportParams): Promise<void> {
   <table>
     <thead><tr><th>#</th><th>Nhóm hành động</th><th>Hành động cụ thể</th><th>Ưu tiên</th><th>Thời hạn</th></tr></thead>
     <tbody>
-      ${STRATEGIC_RECOMMENDATIONS.map((r) => `<tr><td>${r.stt}</td><td>${esc(r.nhom)}</td><td>${esc(r.hanh_dong)}</td><td style="font-weight:bold;color:${r.u_tien === 'Cao' ? '#b91c1c' : r.u_tien === 'Trung bình' ? '#b45309' : '#555'}">${esc(r.u_tien)}</td><td>${esc(r.thoi_han)}</td></tr>`).join('')}
+      ${STRATEGIC_RECOMMENDATIONS.map((r) => `<tr><td>${r.stt}</td><td>${esc(r.nhom)}</td><td>${escBold(r.hanh_dong, r.nhan_manh)}</td><td style="font-weight:bold;color:${r.u_tien === 'Cao' ? '#b91c1c' : r.u_tien === 'Trung bình' ? '#b45309' : '#555'}">${esc(r.u_tien)}</td><td>${esc(r.thoi_han)}</td></tr>`).join('')}
     </tbody>
   </table>
 

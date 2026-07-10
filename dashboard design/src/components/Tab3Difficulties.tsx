@@ -3,16 +3,25 @@ import { AlertOctagon, ClipboardList, ShieldAlert, Building2 } from 'lucide-reac
 import { GLOBAL_DIFFICULTIES, STRATEGIC_RECOMMENDATIONS, UNIT_ROLES } from '../data';
 import { Card, CardHeader, Badge } from './ui';
 
-// Bôi đậm một cụm từ cụ thể trong đoạn văn (nếu có), phần còn lại giữ nguyên
-function HighlightText({ text, bold }: { text: string; bold?: string }) {
-  if (!bold) return <>{text}</>;
-  const idx = text.indexOf(bold);
-  if (idx === -1) return <>{text}</>;
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Bôi đậm một hoặc nhiều cụm từ cụ thể trong đoạn văn (nếu có), phần còn lại giữ nguyên
+function HighlightText({ text, bold }: { text: string; bold?: string | string[] }) {
+  const phrases = (Array.isArray(bold) ? bold : bold ? [bold] : []).filter(Boolean);
+  if (phrases.length === 0) return <>{text}</>;
+  const pattern = new RegExp(`(${phrases.map(escapeRegExp).join('|')})`, 'g');
+  const parts = text.split(pattern);
   return (
     <>
-      {text.slice(0, idx)}
-      <strong className="font-bold text-white">{bold}</strong>
-      {text.slice(idx + bold.length)}
+      {parts.map((part, i) =>
+        phrases.includes(part) ? (
+          <strong key={i} className="font-bold text-white">{part}</strong>
+        ) : (
+          <span key={i}>{part}</span>
+        )
+      )}
     </>
   );
 }
@@ -61,7 +70,7 @@ export function Tab3Difficulties() {
                 <tr key={r.stt} className="border-b border-ink-800/60 transition-colors hover:bg-ink-800/40">
                   <td className="py-3 pr-3 tabular-nums text-slate-400">{r.stt}</td>
                   <td className="px-3 py-3"><Badge tone={r.u_tien === 'Cao' ? 'danger' : r.u_tien === 'Trung bình' ? 'warn' : 'neutral'}>{r.nhom}</Badge></td>
-                  <td className="px-3 py-3 text-slate-200">{r.hanh_dong}</td>
+                  <td className="px-3 py-3 text-slate-200"><HighlightText text={r.hanh_dong} bold={r.nhan_manh} /></td>
                   <td className="px-3 py-3">
                     <span className={`font-semibold ${r.u_tien === 'Cao' ? 'text-red-400' : r.u_tien === 'Trung bình' ? 'text-amber-400' : 'text-slate-400'}`}>{r.u_tien}</span>
                   </td>
